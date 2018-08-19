@@ -6,7 +6,7 @@ experiments :cite:`Hedayat1999`. The Orthogonal Array
 package contains functionality to generate and analyse orthogonal arrays, optimal designs and conference designs. The algorithms and methods in this package
 have been described in :cite:`Eendebak2009`. A large
 collection of arrays can be found on the Orthogonal Array
-packagewebsite :cite:`EendebakOA` or on the website of Neil
+package website :cite:`EendebakOA` or on the website of Neil
 Sloane :cite:`Sloanewebsite`.
 
 
@@ -34,7 +34,7 @@ Interfaces
 ----------
 
 The Orthogonal Array package has several interfaces. First of all there
-are command line tools for manipulating arrays and generating. All
+are command line tools for manipulating and generating arrays. All
 functions of the package can be used from either C++ or Python.
 
 For the generation of D-optimal designs also Matlab or R can be used, see
