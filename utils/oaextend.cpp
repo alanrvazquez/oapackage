@@ -47,6 +47,27 @@ const int MASTER = 0;
 int extend_slave_code (const int this_rank, OAextend const &oaextend) { return 0; }
 #endif
 
+/*!
+Save_arrays writes all the arrays from solutions to a file. The filename is obtained from the number of factors and the number of columns so far. Then the file header contains the number of columns in the
+design,
+the number of runs and the number of arrays in the file.
+\brief Saves the arrays from solutions
+\param solutions List of arrays
+\param ad Arrayclass
+\param resultprefix Prefix string for filename
+\param mode Mode for output file
+*/
+int save_arrays(arraylist_t &solutions, const arraydata_t *ad, 
+	const char *resultprefix, arrayfile::arrayfilemode_t mode) {
+
+	string fname = resultprefix;
+	fname += "-" + oafilestring(ad);
+
+	writearrayfile(fname.c_str(), solutions, mode, ad->N, ad->ncols);
+
+	return 0;
+}
+
 inline void print_progress (int csol, arraylist_t &solutions, arraylist_t &extensions, double Tstart, colindex_t col) {
         time_t seconds;
         struct tm *tminfo;
@@ -182,8 +203,6 @@ int main (int argc, char *argv[]) {
 // printf("slave %d: receive algorithm %d\n", this_rank, algorithm);
 #endif
 
-                // assert(algorithm==MODE_ORIGINAL);
-                // oaextend.algmode = algorithm;
                 extend_slave_code (this_rank, oaextend);
 
                 delete opt;
@@ -223,9 +242,7 @@ int main (int argc, char *argv[]) {
                         logstream (SYSTEM) << "operating in streaming mode, sorting of arrays will not work "
                                            << std::endl;
                         oaextend.extendarraymode = OAextend::STOREARRAY;
-                        // oaextend.storefile.createfile();
                 }
-                // oaextend.init_column_previous=1;
 
                 // J5_45
                 int xx = opt->getFlag ('x');
@@ -323,7 +340,7 @@ int main (int argc, char *argv[]) {
 
                         } else {
                                 // starting with root
-                                if (check_divisibility (ad) == false) { // Divisibility test
+                                if (check_divisibility (ad) == false) { 
                                         log_print (SYSTEM, "ERROR: Failed divisibility test!\n");
 
 #ifdef OAEXTEND_MPI
@@ -341,8 +358,6 @@ int main (int argc, char *argv[]) {
 
                         maxk = std::min (maxk, ad->ncols);
 
-                        // oaextend.info();  ad->show();
-
                         time_t seconds;
                         for (colindex_t current_col = col_start; current_col < maxk; current_col++) {
                                 fflush (stdout);
@@ -357,14 +372,9 @@ int main (int argc, char *argv[]) {
                                                            << std::endl;
                                         int nb = arrayfile_t::arrayNbits (*ad);
 
-                                        // oaextend.storefile.setVerbose(2);
                                         oaextend.storefile.createfile (fname, adcol->N, ad->ncols, -1, ABINARY, nb);
                                 }
 
-                                // printf("hack: adcol current_col %d\n", current_col); adcol->show();
-
-                                // time(&seconds); tminfo = localtime(&seconds);
-                                // log_print(SYSTEM, "TIME: %5i\t%s\n", seconds - t0, asctime(tminfo));
                                 log_print (SYSTEM, "Starting with column %d (%d, total time: %.2f [s])\n",
                                            current_col + 1, (int)solutions.size (), get_time_ms () - Tstart);
                                 nr_extensions = 0;
@@ -376,12 +386,9 @@ int main (int argc, char *argv[]) {
                                         print_progress (csol, solutions, extensions, Tstart, current_col);
                                         logstream (NORMAL) << cur_extension[0];
 
-                                        // if (cur_extension-solutions.begin()>2) break;
-
                                         if (n_processors == 1) {
                                                 nr_extensions += extend_array (cur_extension->array, adcol,
                                                                                current_col, extensions, oaextend);
-
                                         } else {
 #ifdef OAEXTEND_MPI
                                                 double Ttmp = get_time_ms ();
@@ -421,7 +428,7 @@ int main (int argc, char *argv[]) {
                                         log_print (DEBUG, "   sorting time: %.3f [s]\n", get_time_ms () - Ttmp);
                                 }
 
-                                save_arrays (extensions, adcol, extensions.size (), n_processors, resultprefix, mode);
+                                save_arrays (extensions, adcol, resultprefix, mode);
                                 solutions.swap (extensions); // swap old and newly found solutions
                                 extensions.clear ();         // clear old to free up space for new extensions
 

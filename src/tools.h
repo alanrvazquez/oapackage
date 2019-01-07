@@ -4,8 +4,7 @@
  * Author: Pieter Eendebak <pieter.eendebak@gmail.com>
  * Copyright: See LICENSE.txt file that comes with this distribution
  */
-#ifndef TOOLS_H
-#define TOOLS_H
+#pragma once
 
 #include <algorithm>
 #include <iomanip>
@@ -22,27 +21,9 @@
 
 inline std::string base_name (std::string const &path) { return path.substr (path.find_last_of ("/\\") + 1); }
 
-inline void printfd_handler (const char *file, const char *func, int line, const char *message, ...) {
-        std::string s = file;
-        s = base_name (s);
+/// function to print debugging messages
+void printfd_handler (const char *file, const char *func, int line, const char *message, ...);
 
-        const char *fileshort = s.c_str ();
-        myprintf ("file %s: function %s: line %d: ", fileshort, func, line);
-#ifdef FULLPACKAGE
-        char buf[64 * 1024];
-
-        va_list va;
-        va_start (va, message);
-        // vprintf ( message, va );
-        vsprintf (buf, message, va);
-        va_end (va);
-        myprintf ("%s", buf);
-#else
-        myprintf ("printfd_handler not implemented");
-#endif
-}
-
-//#define printfd(MESSAGE) printfd_handler(__FILE__, __LINE__, MESSAGE)
 #define printfd(...) printfd_handler (__FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 
 #include "arraytools.h"
@@ -65,10 +46,13 @@ enum loglevel_t { LOGERROR, SYSTEM, QUIET, NORMAL, DEBUG, EXTRADEBUG };
 
 int log_print (const int level, const char *message, ...);
 
-// struct split;
+/// return current level of logging
 int getloglevel ();
+/// rset the level of logging
 void setloglevel (int n);
-bool checkloglevel (int l);
+
+/// return True if the current logging level is smaller or equal than the specified level
+bool checkloglevel (int level);
 
 /** \brief Null stream */
 class nullStream : public std::ostream {
@@ -77,9 +61,11 @@ class nullStream : public std::ostream {
 };
 
 #ifdef FULLPACKAGE
+/// log a stream to stdout if level specied is higher than the current logging level
 std::ostream &logstream (int level);
 #endif
 
+/// Return string describing the system
 std::string system_uname ();
 
 /// return path separator symbol for the current platform
@@ -98,8 +84,12 @@ void mycheck_handler (const char *file, const char *func, int line, int conditio
 #define mycheck(...) mycheck_handler (__FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /// Check whether the condition is true and throw an expception otherwise
+<<<<<<< HEAD
 void myassert (int condition, const char *error_message = 0);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+void myassert (int condition, const char *error_message );
+>>>>>>> pieter/dev
 
 /** Throw a runtime_error exception with specified error message
  * 
@@ -107,17 +97,13 @@ void myassert (int condition, const char *error_message = 0);
  */
 void throw_runtime_exception (const std::string exception_message);
 
+/// conditional printf
 inline int cprintf (int check, const char *message, ...) {
         int n = 0;
         if (check) {
                 va_list va;
                 va_start (va, message);
-#ifdef RPACKAGE
-                n = -1;
-                myprintf ("cprintf: not implemented\n");
-#else
                 n = vprintf (message, va);
-#endif
                 va_end (va);
         }
         return n;
@@ -125,31 +111,28 @@ inline int cprintf (int check, const char *message, ...) {
 
 /// flush to stdout
 inline void flush_stdout () {
-#ifdef RPACKAGE
-#else
         fflush (stdout);
-#endif
 }
 
 template < class A >
 /**
- * Delete a pointer and set to zero.
+ * Delete object given by a pointer and set to zero.
  */
-inline void safedelete (A *p) {
-        if (p != 0)
-                delete p;
-        p = 0;
+inline void safedelete (A *pointer) {
+        if (pointer != 0)
+                delete pointer;
+        pointer = 0;
 }
 
 template < class A >
 /**
  * Delete array and set pointer to zero
- * @param p
+ * @param pointer Pointer to allocated array 
  */
-inline void safedeletearray (A *p) {
-        if (p != 0)
-                delete[] p;
-        p = 0;
+inline void safedeletearray (A *pointer) {
+        if (pointer != 0)
+                delete[] pointer;
+        pointer = 0;
 }
 
 template < class Type >
@@ -317,11 +300,8 @@ void free2d_irr (DataType **data, const int nrows) {
         free2d (data);
 }
 
-void print_array (const char *str, const array_t *array, const rowindex_t r, const colindex_t c);
-void print_array (const array_t *array, const rowindex_t r, const colindex_t c);
-
-/// Print array to stdout
-void print_array (const array_link &A);
+void print_array (const char *str, const array_t *array, const int nrows, const int ncols);
+void print_array (const array_t *array, const rowindex_t nrows, const colindex_t ncols);
 
 #ifdef FULLPACKAGE
 template < class atype >
@@ -359,23 +339,6 @@ void printf_vector (const std::vector< atype > &vector, const char *format, cons
         }
 }
 
-#ifdef FULLPACKAGE
-template < class atype > void show_array_dyn (const atype *array, const int x, const int y) {
-        register int i, j, k;
-
-        for (i = 0; i < y; i++) {
-                k = i;
-                for (j = 0; j < x; j++) {
-                        std::cout << std::setw (3) << array[k];
-                        k += y;
-                }
-                std::cout << "\n";
-        }
-}
-#endif
-
-//inline void addelement (const array_t elem, int *elements) { elements[elem]++; }
-
 /// return time with milisecond precision
 double get_time_ms ();
 
@@ -386,44 +349,25 @@ double get_time_ms (double t0);
 void trim (std::string &str, const std::string &trimChars = "");
 
 /// return the current time as a string
-inline std::string currenttime () {
-        time_t seconds;
-        struct tm *tminfo;
-        time (&seconds);
-        tminfo = localtime (&seconds);
-        std::string ts = asctime (tminfo);
-        trim (ts);
-        return ts;
-}
+std::string currenttime ();
 
 /// return string describing array
-std::string oafilestring (const arraydata_t *ad);
+std::string oafilestring (const arraydata_t *arrayclass);
 
 template < class numtype >
 /** @brief Convert integer to C++ string
  *
- * @param i Integer
+ * @param integer_value Integer
  * @return String representation of the integer
  */
-inline std::string itos (numtype i) {
+inline std::string itos (numtype integer_value) {
         std::stringstream s;
-        s << i;
+        s << integer_value;
         return s.str ();
 }
 
 /// printf-style function that returns std::string
 std::string printfstring (const char *message, ...);
-
-inline std::string printtime () {
-        time_t rawtime;
-        struct tm *timeinfo;
-
-        time (&rawtime);
-        timeinfo = localtime (&rawtime);
-        return printfstring ("%s", asctime (timeinfo));
-}
-
-/* sorting templates */
 
 template < class Object >
 /**
@@ -447,13 +391,13 @@ inline void insertionSort (Object array[], int length) {
 
 template < class itemType, class indexType >
 /// sort arrays using bubbleSort
-inline void bubbleSort (itemType a[], indexType left, indexType right) {
+inline void bubbleSort (itemType array[], indexType left, indexType right) {
         indexType i, j;
 
         for (i = right; i > left; --i)
                 for (j = left; j < i; ++j)
-                        if (a[j] > a[j + 1])
-                                std::swap (a[j], a[j + 1]);
+                        if (array[j] > array[j + 1])
+                                std::swap (array[j], array[j + 1]);
 }
 
 template < class itemType, class indexType >
@@ -461,7 +405,7 @@ template < class itemType, class indexType >
  *
  * The indices left and right are inclusive.
  */
-inline void flipSort (itemType a[], indexType left, indexType right) {
+inline void flipSort (itemType array[], indexType left, indexType right) {
         indexType i, j;
 
         i = right;
@@ -469,8 +413,8 @@ inline void flipSort (itemType a[], indexType left, indexType right) {
                 indexType ii = i;
                 i = left;
                 for (j = left; j < ii; ++j) {
-                        if (a[j] > a[j + 1]) {
-                                std::swap (a[j], a[j + 1]);
+                        if (array[j] > array[j + 1]) {
+                                std::swap (array[j], array[j + 1]);
                                 i = j;
                         }
                 }
@@ -557,22 +501,15 @@ inline std::string replaceString (std::string subject, const std::string &search
 }
 
 /// print a double value as bits
-inline void printdoubleasbits (double double_value) {
-        unsigned char *desmond = (unsigned char *)&double_value;
-        for (size_t i = 0; i < sizeof (double); i++) {
-                myprintf ("%02X ", desmond[i]);
-        }
-        myprintf ("\n");
-}
+void printdoubleasbits (double double_value, bool add_newline = true);
 
 /// calculate directory name for job splitted into parts
-std::string splitDir (std::vector< int > ii);
+std::string splitDir (std::vector< int > tag_indices);
 
 /// calculate file name of job splitted into parts
-std::string splitFile (std::vector< int > ii);
+std::string splitFile (std::vector< int > tag_indices);
 
 /// calculate tag for job splitted into parts
-std::string splitTag (std::vector< int > ii);
+std::string splitTag (std::vector< int > tag_indices);
 
-#endif
-// kate: indent-mode cstyle; indent-width 4; replace-tabs off; tab-width 4;
+

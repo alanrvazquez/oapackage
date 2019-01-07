@@ -6,8 +6,8 @@ The Orthogonal Array package contains functionality to generate and analyse orth
 Features include generation of complete series of orthogonal arrays, 
 reduction of arrays to normal form and calculation of properties such as the strength or D-efficiency of an array.
 For more information about the package see the
-documentation at [oapackage.readthedocs.io](https://oapackage.readthedocs.io/en/latest/)
-and the webpage <http://pietereendebak.nl/oapackage/>.
+documentation at [oapackage.readthedocs.io](https://oapackage.readthedocs.io/en/latest/). A large collection of results generated
+with the package can be found at <http://pietereendebak.nl/oapackage/>.
 
 Usage
 -------
@@ -41,7 +41,7 @@ Acknowledgements
 
 If you use this code or any of the results, please cite this program as follows:
 
-* [Complete Enumeration of Pure-Level and Mixed-Level Orthogonal Arrays](http://dx.doi.org/10.1002/jcd.20236), E.D. Schoen, P.T. Eendebak, M.V.M. Nguyen, Volume 18, Issue 2, pages 123-140, 2010.
+* [Complete Enumeration of Pure-Level and Mixed-Level Orthogonal Arrays](https://doi.org/10.1002/jcd.20236), E.D. Schoen, P.T. Eendebak, M.V.M. Nguyen, Volume 18, Issue 2, pages 123-140, 2010.
 * [Two-Level Designs to Estimate All Main Effects and Two-Factor Interactions](https://doi.org/10.1080/00401706.2016.1142903), Pieter T. Eendebak, Eric D. Schoen, Technometrics Vol. 59 , Iss. 1, 2017
 
 The code was written by:
@@ -61,7 +61,7 @@ Installation
 ------------
 
 [![PyPI version](https://badge.fury.io/py/OApackage.svg)](https://badge.fury.io/py/OApackage)
-[![Build status](https://ci.appveyor.com/api/projects/status/f6ia9br95soimf9u?svg=true)](https://ci.appveyor.com/project/eendebakpt/oapackage-4lws8)
+[![Build status](https://ci.appveyor.com/api/projects/status/f6ia9br95soimf9u/branch/master?svg=true)](https://ci.appveyor.com/project/eendebakpt/oapackage-4lws8)
 [![Build Status](https://travis-ci.org/eendebakpt/oapackage.svg?branch=master)](https://travis-ci.org/eendebakpt/oapackage)
 
 The Python interface to the package is available on the [Python Package index](https://pypi.python.org/pypi/OApackage/).
@@ -80,14 +80,8 @@ $ make
 $ make install
 ````
 
-Testing
--------
+Contributing, unit testing and support
+--------------------------------------
 
-To perform tests run `pytest`. To obtain a coverage report, run
-```
-$ coverage run --source='./oapackage' -m pytest
-$ coverage report --omit oapackage/markup.py,oapackage/tests/*.py,oapackage/deprecated.py
-```
-
-Continuous integration and testing for the C++ library is performed on [Travis](https://travis-ci.org/eendebakpt/oapackage) and for the Python package on
-[AppVeyor](https://ci.appveyor.com/project/eendebakpt/oapackage-4lws8).
+See the file [CONTRIBUTING.md](https://github.com/eendebakpt/oapackage/blob/master/CONTRIBUTING.md) on GitHub.
+             

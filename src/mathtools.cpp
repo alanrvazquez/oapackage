@@ -1,26 +1,21 @@
-#include "mathtools.h"
-
 #include <numeric>
 
-#ifdef RPACKAGE
-#else
+#include "mathtools.h"
+
 void set_srand (unsigned int s) { srand (s); }
-#endif
 
 template < class Type > void symmetry_group::init (const std::vector< Type > vals, bool ascendingx, int verbose) {
-#ifdef RPACKAGE
-#else
+
         if (verbose >= 2) {
                 myprintf ("symmetry_group::init: %ld elements: ", vals.size ());
                 for (size_t i = 0; i < vals.size (); i++)
                         std::cout << vals[i] << ", ";
                 myprintf ("\n");
         }
-#endif
+
         n = vals.size ();
         ascending = ascendingx;
 
-        // check we are sorted
         if (verbose >= 2)
                 myprintf ("symmetry_group::init: check sorting\n");
 
@@ -31,9 +26,7 @@ template < class Type > void symmetry_group::init (const std::vector< Type > val
         else
                 is.sortdescending (vals);
 
-        //      myprintf("symmetry_group::init: xxx\n");
-
-        if (verbose >= 2 || 0) {
+        if (verbose >= 2) {
                 if (ascending) {
                         if (!is.issorted ()) {
                                 myprintf ("symmetry_group: input group was not sorted!\n");
@@ -50,20 +43,13 @@ template < class Type > void symmetry_group::init (const std::vector< Type > val
         }
         // calc group
         int nsg = 0;
-        Type prev; //=vals[0];
+        Type prev; 
 
         prev = std::numeric_limits< Type >::quiet_NaN ();
         /* count number of symmetry groups */
         for (int i = 0; i < n; i++) {
                 if (vals[i] != prev || i == 0) {
                         nsg++;
-#ifdef FULLPACKAGE
-                        if (verbose) {
-                                myprintf ("  symmetry_group: %d: add ", i);
-                                std::cout << prev << "->";
-                                std::cout << vals[i] << std::endl;
-                        }
-#endif
                 }
                 prev = vals[i];
         }
@@ -127,7 +113,6 @@ symmetry_group::symmetry_group (const std::vector< mvalue_t< double > > &vals, b
 }
 
 symmetry_group::symmetry_group (const std::vector< mvalue_t< int > > &vals, bool ascending, int verbose) {
-        // printf("symmetry_group::symmetry_group: type <mvalue_t<int>: %zu, %zu\n", vals.size(), vals[0].size() );
         this->init (vals, ascending, verbose);
 }
 
@@ -154,6 +139,40 @@ symmetry_group::symmetry_group () {
         ngroups = 0;
         n = 0;
         ascending = 0;
+}
+
+/// representation function (for python interface)
+std::string symmetry_group::__repr__() const {
+	std::stringstream ss;
+	ss << "symmetry group: " << n << " elements, " << ngroups << " subgroups: ";
+	for (int i = 0; i < ngroups; i++)
+		ss << gsize[i] << " ";
+
+	std::string s = ss.str();
+	return s;
+}
+
+/// show the symmetry group
+void symmetry_group::show(int verbose) const {
+	myprintf("symmetry group: %d elements, %d subgroups: ", n, ngroups);
+	for (int i = 0; i < ngroups; i++)
+		myprintf("%d ", gsize[i]);
+	myprintf("\n");
+
+	if (verbose >= 2) {
+		myprintf("gidx: ");
+		for (int i = 0; i < n; i++)
+			myprintf("%d, ", gidx[i]);
+		myprintf("\n");
+		myprintf("gstart: ");
+		for (int i = 0; i < ngroups; i++)
+			myprintf("%d, ", gstart[i]);
+		myprintf("\n");
+		myprintf("gsize: ");
+		for (int i = 0; i < ngroups; i++)
+			myprintf("%d, ", gsize[i]);
+		myprintf("\n");
+	}
 }
 
 void symmetry_group_walker::show (int verbose) const {
@@ -196,9 +215,6 @@ std::vector< int > symmetry_group_walker::fullperm () const {
         return ww;
 }
 
-// instantiate classes
-// template symmetry_group::symmetry_group<int>(std::vector<int>, int);
-
 /* Random number generators */
 
 int g_seed = 123;
@@ -228,8 +244,6 @@ void Combinations::initialize_number_combinations (int N) {
                 }
 
                 ncombsdata = new long *[nrows];
-                // if debugging, check for memory allocation
-                assert (ncombsdata);
 
                 ncombsdata[0] = new long[nrows * rowsize];
 
@@ -260,10 +274,9 @@ int Combinations::number_combinations_max_n () { return Combinations::ncombscach
 
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 long Combinations::number_combinations (int n, int k) {
-#ifdef OADEBUG
-        assert (Combinations::ncombsdata != 0);
+#ifdef SWIGPYTHON
+        myassert (Combinations::ncombsdata != 0);
 #endif
         return Combinations::ncombsdata[n][k];
 }
 
-// kate: indent-mode cstyle; indent-width 4; replace-tabs off; tab-width 4;

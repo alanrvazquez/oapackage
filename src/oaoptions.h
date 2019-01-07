@@ -4,22 +4,13 @@
         These options are compiled into the program. Making them a run-time option would be inefficient.
 */
 
-#ifndef ALGO_OPTIONS_H
-#define ALGO_OPTIONS_H
+#pragma once
 
 #include <string>
 
 /* max number of columns in algorithms */
 #define MAXCOLS 60
 #define MAXROWS 2048
-
-const int HACK = 0;
-
-/* output analysis data */
-//#define OAANALYZE 1
-
-/* for developing purposes*/
-//#define OAEXTRA 1
 
 /* add checks for nonsense input from the user */
 #define OACHECK 1
@@ -54,14 +45,9 @@ const int HACK = 0;
 //#define oacolSort bubbleSort
 //#define oacolSortName "bubbleSort"
 
-/* use j-value check */
-//#define JCHECK 1
-
-//#define NOFINAL 1
-
 /**
  * Print the compile-time options to string.
- * @return String with information
+ * @return String with compile time information
  */
 std::string compile_information ();
 
@@ -77,8 +63,9 @@ void print_copyright_old ();
 /// Print copyright statement
 void print_copyright_light ();
 
-/// Print compile time options
-void print_options (std::ostream &outx);
+/// Print compile time options to output stream
+void print_options (std::ostream &output_stream);
+/// Print compile time options to stdout
 void print_options ();
 
 #ifdef OADEV
@@ -87,4 +74,3 @@ inline int oadevelop () { return 1; }
 inline int oadevelop () { return 0; }
 #endif
 
-#endif

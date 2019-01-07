@@ -12,8 +12,7 @@
  Copyright: See LICENSE.txt file that comes with this distribution
 */
 
-#ifndef ARRAYTOOLS_H
-#define ARRAYTOOLS_H
+#pragma once
 
 #ifdef WIN32
 #define _CRT_SECURE_NO_DEPRECATE
@@ -67,6 +66,8 @@ typedef(unsigned __int64) uint64_t;
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <map>
+
 
 #include <stdexcept>
 
@@ -182,23 +183,27 @@ array_link createJ2tableConference (const array_link &confmatrix);
 /// create J2 table as intermediate result for J-characteristic calculations
 array_link createJdtable (const array_link &al);
 
-enum ordering_t { ORDER_LEX, ORDER_J5 };
+enum ordering_t { 
+  /// lexicograph minimal by columns ordering
+  ORDER_LEX,
+  /// J5 based ordering
+  ORDER_J5 };
 
-/** @brief Contains properties of the design (number of rows, columns, levels)
+/** @brief Specifies a class of arrays
  *
- * Constructor: arrayclass = arraydata_t(s, N, strength,ncolumns)
+ * The specification includes the number of rows, number of columns, factor levels and strength. 
  */
 struct arraydata_t {
-        /** number of runs */
+        /// number of runs 
         rowindex_t N;
-        /** total number of columns (factors) in the design */
+        /// total number of columns (factors) in the design 
         colindex_t ncols;
-        /** strength of the design */
+        /// strength of the design 
         colindex_t strength;
-        /** pointer to factor levels of the array */
+        /// pointer to factor levels of the array 
         array_t *s;
 
-        /** Ordering used for arrays */
+        /// Ordering used for arrays 
         ordering_t order;
 
         /* derived data */
@@ -212,26 +217,54 @@ struct arraydata_t {
         int oaindex;
 
       public:
-        /// create new arraydata_t object
-        arraydata_t (array_t s, rowindex_t N, colindex_t strength, colindex_t ncols);
-        arraydata_t (const std::vector< int > s, rowindex_t N, colindex_t strength, colindex_t ncols);
+		/** Specifies a class of orthogonal arrays
+		 *
+		 * The specification includes the number of rows, number of columns, factor levels and strength.
+		 * 
+		 * An orthogonal array of strength t, N runs, k factors (columns) and factor levels s[i] is an N times k array with
+		 * symbols 0, 1, ..., s[i]-1 in column i such that for every t columns every t-tuple of elements occurs equally often.
+		 */
+		arraydata_t();
+		/**
+		* @copydoc arraydata_t::arraydata_t()
+		*
+		* \param s Factor levels
+		* \param N Number of rows
+		* \param strength Strength for class
+		* \param ncols Number of columns for the class
+		*/
+		arraydata_t (array_t s, rowindex_t N, colindex_t strength, colindex_t ncols);
+		/**
+		* @copydoc arraydata_t::arraydata_t()
+		*
+		* \param s Factor levels
+		* \param N Number of rows
+		* \param strength Strength for class
+		* \param ncols Number of columns for the class
+		*/
+		arraydata_t (const std::vector< int > s, rowindex_t N, colindex_t strength, colindex_t ncols);
+		/// @copydoc arraydata_t::arraydata_t()
         arraydata_t (const array_t *s_, rowindex_t N, colindex_t strength, colindex_t ncols);
-        /// copy constructor
+        /// @copydoc arraydata_t::arraydata_t()
         arraydata_t (const arraydata_t &adp);
 
-        /// copy constructor
+        /// @copydoc arraydata_t::arraydata_t()
         arraydata_t (const arraydata_t *adp, colindex_t newncols);
-        /// dummy constructor
-        arraydata_t ();
 
         ~arraydata_t ();
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         /// return true if the array is of mixed type
         bool ismixed () const;
 
         /// return true if the array is a 2-level array
 =======
+=======
+		arraydata_t& operator= (const arraydata_t &ad2);
+		int operator== (const arraydata_t &ad2);
+
+>>>>>>> pieter/dev
         /// return true if the class represents mixed-level arrays
         bool ismixed () const;
 
@@ -243,10 +276,14 @@ struct arraydata_t {
         array_link randomarray (int strength = 0, int ncols = -1) const;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         /**
          * @brief Write file with design of OA
 =======
         /** @brief Write file with design of OA
+=======
+        /** @brief Write file with specification of orthognal array class
+>>>>>>> pieter/dev
 		 *
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
          * @param filename
@@ -254,6 +291,7 @@ struct arraydata_t {
          */
         void writeConfigFile (const char *filename) const;
 
+<<<<<<< HEAD
         /// @brief assignment operator
         inline arraydata_t &operator= (const arraydata_t &ad2) {
                 this->N = ad2.N;
@@ -380,6 +418,8 @@ struct arraydata_t {
                 return 1;
         };
 
+=======
+>>>>>>> pieter/dev
         std::string idstr () const;
         std::string idstrseriesfull () const;
         std::string fullidstr (int series = 0) const;
@@ -393,6 +433,8 @@ struct arraydata_t {
         }
         std::string showstr () const;
         void show (int verbose = 1) const;
+
+		/// Calculate derived data such as the index and column groups from a design
         void complete_arraydata ();
 
         /// check whether the LMC calculation will overflow
@@ -411,45 +453,25 @@ struct arraydata_t {
         void set_colgroups (const symmetry_group &sg);
 
         /// show column groups in the array class
-        void show_colgroups () const {
-                myprintf ("arraydata_t: colgroups: ");
-                print_perm (this->colgroupindex, this->ncolgroups);
-                myprintf ("                  size: ");
-                print_perm (this->colgroupsize, this->ncolgroups);
-        }
+        void show_colgroups () const;
 
-		/// calculate the index of the orthogonal arrays in this class
-        void calculate_oa_index (colindex_t strength) {
-                int combs = 1;
-                for (int i = 0; i < this->strength; i++) {
-                        combs *= this->s[i];
-                }
-
-                if (combs == 0) {
-                        this->oaindex = 0;
-                } else {
-                        this->oaindex = this->N / combs;
-                }
-        }
+	/// calculate the index of the orthogonal arrays in this class
+        void calculate_oa_index (colindex_t strength);
 
         /// return the root array for the class
         array_link create_root (int n_columns = -1, int fill_value = 0) const;
 
         /// return the factor level for the specified column return -1 if the column index is invalid
-        int getfactorlevel (int idx) const {
-                if (idx < 0) {
-                        return -1;
-                }
-                if (idx >= this->ncols) {
-                        return -1;
-                }
-                return this->s[idx];
-        }
+		int getfactorlevel(int idx) const;
 
         /// return factor levels
         std::vector< int > getS () const {
+<<<<<<< HEAD
                 myprintf("deprecated method: use factor_levels instead\n");
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+                myprintf("getS(): deprecated method: use factor_levels instead\n");
+>>>>>>> pieter/dev
                 std::vector< int > s (this->ncols);
                 for (int i = 0; i < this->ncols; i++) {
                         s[i] = this->s[i];
@@ -476,28 +498,17 @@ struct arraydata_t {
         
         /**
          * @brief Reset strength of arraydata
-         * @param t
+         * @param strength The strength to reset the structure to
          */
-        void reset_strength (colindex_t t) {
-                strength = t;
-                delete[] colgroupindex;
-                delete[] colgroupsize;
-                complete_arraydata ();
-        }
+		void reset_strength(colindex_t strength);
 
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         /// Return index of the column group for a column
-        colindex_t get_col_group (const colindex_t col) const {
-                colindex_t j = 0;
-                for (colindex_t i = 0; i < ncolgroups; i++) {
-                        if (colgroupindex[i] <= col) {
-                                j = i;
-                        } else {
-                                break;
-                        }
-                }
-                return j;
-        }
+		colindex_t get_col_group(const colindex_t col) const;
+
+	public:
+		/// Return True if the factor levels are sorted from large to small
+		bool is_factor_levels_sorted() const;
 };
 
 /// Read array configuration from file
@@ -508,6 +519,7 @@ arraydata_t *readConfigFile (const char *file);
  * @param message
  * @return
  */
+<<<<<<< HEAD
 inline std::string printfstring (const char *message, ...) {
         char buf[8 * 1024];
 <<<<<<< HEAD
@@ -535,6 +547,9 @@ inline std::string printfstring (const char *message, ...) {
         std::string str (buf);
         return str;
 }
+=======
+std::string printfstring(const char *message, ...);
+>>>>>>> pieter/dev
 
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 /**
@@ -574,20 +589,6 @@ static inline array_t *create_array (const int nrows, const int ncols) {
  */
 inline array_t *create_array (const arraydata_t *ad) { return create_array (ad->N, ad->ncols); }
 
-/**
- * @brief Compare 2 columns of an array
- * @param A
- * @param col
- * @param col2
- * @param nrows
- * @param rstart
- * @param rend
- * @return
- */
-inline int equal_array_cols (carray_t *A, colindex_t col, colindex_t col2, rowindex_t nrows, rowindex_t rstart,
-                             rowindex_t rend) {
-        return std::equal (A + col * nrows + rstart, A + col * nrows + rend, (A + col2 * nrows + rstart));
-}
 
 /**
  * @brief Clone an array
@@ -599,6 +600,7 @@ inline array_t *clone_array (const array_t *const array, const rowindex_t nrows,
         return clone;
 }
 
+<<<<<<< HEAD
 /** @brief Perform inverse column permutation on an array
  *
  * @param source
@@ -946,6 +948,8 @@ struct array_link {
                 std::string rs = s.str ();
                 return rs;
         }
+=======
+>>>>>>> pieter/dev
 
         /// return md5 sum of array representation (as represented with 32bit int datatype in memory)
         std::string md5 () const;
@@ -984,7 +988,7 @@ struct array_link {
         /// create array_link structure with data from another array_link structure
         array_link (const array_link &);
         /// create array_link structure with data from Eigen matrix
-        array_link (Eigen::MatrixXd &m);
+        array_link (Eigen::MatrixXd &eigen_matrix);
         ~array_link ();
 
 #ifdef SWIGCODE
@@ -999,6 +1003,9 @@ struct array_link {
         /// print array to stdout
         void showarray () const;
 
+        /// print array to string
+	std::string showarrayString () const;
+
         /// print array to stdout
         void showarraycompact () const;
 
@@ -1008,11 +1015,16 @@ struct array_link {
         /// return true if the array is a 2-level array (e.g. only contains values 0 and 1)
         bool is2level () const;
 
-        /// return true if the array is a +1, 0, -1 valued array
-        bool is_conference () const;
-
 		/// return true is the array is a mixel-level array
 		bool is_mixed_level() const;
+
+		/// return true is the array is array with values in 0, 1, ...,  for each column
+		bool is_orthogonal_array() const;
+
+	/** return true if the array is a +1, 0, -1 valued array
+		 */
+        bool is_conference () const;
+
 
         /// return true if the array is a +1, 0, -1 valued array, with specified number of zeros in each column
         bool is_conference (int number_of_zeros) const;
@@ -1116,11 +1128,11 @@ struct array_link {
          */
         double CL2discrepancy () const;
 
-        /// apply a random permutation of rows, columns and levels
+        /// apply a random permutation of rows, columns and levels of an orthogonal array
         array_link randomperm () const;
-        /// apply a random permutation of columns
+        /// apply a random permutation of columns of an orthogonal array
         array_link randomcolperm () const;
-        /// apply a random permutation of row
+        /// apply a random permutation of rows of an orthogonal array
         array_link randomrowperm () const;
 
         /** This function calculates Helmert contrasts for the factors of an input design.
@@ -1154,37 +1166,11 @@ struct array_link {
         /// elementwise multiplication
         array_link operator* (const array_link &rhs) const;
 
-        array_link operator* (array_t val) const {
-                array_link al (*this);
-                int NN = this->n_rows * this->n_columns;
-                for (int i = 0; i < NN; i++) {
-                        al.array[i] *= val;
-                }
-                return al;
-        }
+        array_link operator* (array_t val) const;
 
-        array_link operator*= (array_t val) {
-                int NN = this->n_rows * this->n_columns;
-                for (int i = 0; i < NN; i++) {
-                        this->array[i] *= val;
-                }
-                return *this;
-        }
-
-        array_link operator+= (array_t val) {
-                int NN = this->n_rows * this->n_columns;
-                for (int i = 0; i < NN; i++) {
-                        this->array[i] += val;
-                }
-                return *this;
-        }
-        array_link operator-= (array_t val) {
-                int NN = this->n_rows * this->n_columns;
-                for (int i = 0; i < NN; i++) {
-                        this->array[i] -= val;
-                }
-                return *this;
-        }
+        array_link operator*= (array_t val);
+        array_link operator+= (array_t val);
+        array_link operator-= (array_t val);
 
         /// get element from array, no error checking, inline version
         inline const array_t &atfast (const rowindex_t r, const colindex_t c) const {
@@ -1205,30 +1191,23 @@ struct array_link {
         array_t &at (const rowindex_t, const colindex_t);
 
         /// set all elements in the array to a value
-        void setconstant (array_t val);
+        void setconstant (array_t value);
 
         /// set value of an array
-        void setvalue (int row, int col, int val);
+        void setvalue (int row, int col, int value);
         /// set value of an array
-        void setvalue (int row, int col, double val);
+        void setvalue (int row, int col, double value);
 
         /// set value of an array, no bounds checking!
-        void _setvalue (int row, int col, int val);
+        void _setvalue (int row, int col, int value);
 
         /// multiply a row by -1
-        void negateRow (rowindex_t r) {
-                for (int c = 0; c < this->n_columns; c++) {
-                        this->atfast (r, c) *= -1;
-                }
-        }
+        void negateRow (rowindex_t row);
         /// print information about array
-        void show () const { myprintf ("index: %d, (%d, %d), array %p\n", index, n_rows, n_columns, (void *)array); }
-        std::string showstr () const {
-                std::stringstream s;
-                s << "array_link: " << n_rows << ", " << n_columns << "";
-                std::string rs = s.str ();
-                return rs;
-        }
+        void show () const;
+	
+	/// return string describing the array
+        std::string showstr () const;
 
         /// return md5 sum of array representation (as represented with 32bit int datatype in memory)
         std::string md5 () const;
@@ -1273,13 +1252,7 @@ struct array_link {
         }
 
         /// set column to values
-        void setcolumn (int c, const array_link &al, int sc = 0) {
-                assert (c >= 0);
-                assert (c <= this->n_columns);
-                assert (this->n_rows == al.n_rows);
-                std::copy (al.array + sc * this->n_rows, al.array + (sc + 1) * this->n_rows,
-                           this->array + this->n_rows * c);
-        }
+        void setcolumn (int target_column, const array_link &source_array, int source_column = 0) const;
 
       public:
         array_link (const array_link &, const std::vector< int > &colperm);
@@ -1299,6 +1272,7 @@ struct array_link {
         array_link reduceDOP () const;
 
         /// return the array as an Eigen matrix
+<<<<<<< HEAD
         inline MatrixFloat getEigenMatrix () const {
                 int k = this->n_columns;
                 int n = this->n_rows;
@@ -1316,22 +1290,13 @@ struct array_link {
                 }
                 return mymatrix;
         }
+=======
+		MatrixFloat getEigenMatrix() const;
+>>>>>>> pieter/dev
 
         /// return true of specified column is smaller than column in another array
-        inline int columnGreater (int c1, const array_link &rhs, int c2) const {
-
-                if ((this->n_rows != rhs.n_rows) || c1 < 0 || c2 < 0 || (c1 > this->n_columns - 1)) {
-                        myprintf ("array_link::columnGreater: warning: comparing arrays with different sizes\n");
-                        return 0;
-                }
-
-                int n_rows = this->n_rows;
-                return std::lexicographical_compare (rhs.array + c2 * n_rows, rhs.array + c2 * n_rows + n_rows,
-                                                     array + c1 * n_rows, array + c1 * n_rows + n_rows);
-        }
-
-        std::string showarrayS () const;
-
+        int columnGreater (int c1, const array_link &rhs, int rhs_column) const;
+	
         void debug () const;
 #ifdef SWIGCODE
         void *data (); /// return pointer to data, needed for swig interface
@@ -1369,21 +1334,27 @@ typedef std::vector< conference_column > conference_column_list;
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
 /// concatenate 2 arrays in vertical direction
-array_link hstack (const array_link &al, const array_link &b);
+array_link hstack (const array_link &array1, const array_link &array2);
 
 <<<<<<< HEAD
 /// concatenate 2 arrays in vertical direction
 array_link hstack (const array_link &al, const cperm &b);
 =======
 /// concatenate array and conference_column 
+<<<<<<< HEAD
 array_link hstack (const array_link &al, const conference_column &b);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+array_link hstack (const array_link &array, const conference_column &column);
+>>>>>>> pieter/dev
 
 /// concatenate 2 arrays in horizontal direction
-array_link hstack (const array_link &al, const array_link &b);
+array_link hstack (const array_link &array_left, const array_link &array_right);
+
 /// concatenate the last column of array B to array A
 array_link hstacklastcol (const array_link &A, const array_link &B);
 
+<<<<<<< HEAD
 /// concatenate two permutations
 <<<<<<< HEAD
 inline cperm vstack (const cperm &A, const cperm &B) {
@@ -1397,6 +1368,10 @@ inline conference_column vstack (const conference_column &A, const conference_co
         std::copy (B.begin (), B.end (), c.begin () + A.size ());
         return c;
 }
+=======
+/// concatenate two columns
+conference_column vstack(const conference_column &column_top, const conference_column &column_bottom);
+>>>>>>> pieter/dev
 
 /// perform column permutation for an array
 void perform_column_permutation (const array_link source, array_link &target, const std::vector< int > perm);
@@ -1421,19 +1396,12 @@ arraydata_t arraylink2arraydata (const array_link &array, int extracols = 0, int
 typedef std::deque< array_link > arraylist_t;
 
 /// add a constant value to all arrays in a list
-inline arraylist_t addConstant (const arraylist_t &lst, int v) {
-        arraylist_t out (lst.size ());
-
-        for (size_t i = 0; i < lst.size (); i++) {
-                out[i] = lst[i] + v;
-        }
-
-        return out;
-}
+arraylist_t addConstant (const arraylist_t &lst, int value);
 
 /** Return number of arrays with j_{2n+1}=0 for number_of_arrays<m */
 std::vector< int > getJcounts (arraylist_t *arraylist, int N, int k, int verbose = 1);
 
+<<<<<<< HEAD
 /** @brief Predict j4(1,2,3,k) using the theorem from Deng
  * This works only for 2-level arrays. The 0 corresponds to a +
  *
@@ -1474,8 +1442,9 @@ inline int predictJ (const array_t *array, const int N, const int k) {
         return 8 * number_of_plus_values - N;
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 }
+=======
+>>>>>>> pieter/dev
 
-#include <map>
 
 /**
  * @brief struct to hold data of an array, e.g. J-characteristic. Abstract base class
@@ -1576,7 +1545,7 @@ class jstruct_t {
         /// contains calculated J-values
         std::vector< int > values;
         /// calculated abberation
-        double A;
+        double abberation;
 
       public:
         /// Create an object to calculate J-characteristics
@@ -1598,7 +1567,7 @@ class jstruct_t {
         void calcj5 (const array_link &al);
 
       public:
-        jstruct_t &operator= (const jstruct_t &rhs); // assignment
+        jstruct_t &operator= (const jstruct_t &rhs); 
 
         /// calculate maximum J value
         int maxJ () const;
@@ -1609,31 +1578,21 @@ class jstruct_t {
         /// calculate histogram of J values for a 2-level array
         std::vector< int > calculateF (int strength = 3) const;
 
-        // calculate aberration value
-        void calculateAberration () {
-                jstruct_t *js = this;
-                js->A = 0;
-                for (int i = 0; i < js->nc; i++) {
-                        js->A += js->values[i] * js->values[i];
-                }
-                js->A /= N * N;
-        }
+        /// calculate aberration value
+		void calculateAberration();
+
         /// Show contents of structure
-        void show ();
+        void show () const;
         void showdata ();
         std::string showstr ();
 
         /// return 1 if all J values are zero, otherwise return 0
-        int allzero () {
-                for (int i = 0; i < this->nc; ++i) {
-                        if (this->values[i] != 0) {
-                                return 0;
-                        }
-                }
-                return 1;
-        }
+		int allzero() const;
 };
 
+/** Calculate J-characteristics of conference designs
+ *
+ **/
 class jstructconference_t : public jstructbase_t {
       public:
         jstructconference_t (int N, int jj = 4) {
@@ -1648,25 +1607,15 @@ class jstructconference_t : public jstructbase_t {
         }
 
       private:
-        void calcJvalues (int N, int jj) {
-                assert (jj == 4);
-                int nn = floor (double(int((N - jj + 1) / 4))) + 1;
-                this->jvalues = std::vector< int > (nn);
-                this->jvalue2index.clear ();
-                for (size_t i = 0; i < jvalues.size (); i++) {
-                        int jval = (N - jj) - i * 4;
-                        jvalues[i] = jval;
-                        jvalue2index[jval] = i;
-                }
-        }
-
-        void calc (const array_link &al) { values = Jcharacteristics_conference (al, this->jj); }
+		void calcJvalues(int N, int jj);
+		void calc(const array_link &al);
 };
 
 /// set first columns of an array to root form
-void create_root (array_t *array, const arraydata_t *ad);
-/// Creates the root of an OA. The root is appended to the current list of arrays
-void create_root (const arraydata_t *ad, arraylist_t &solutions);
+void create_root (array_t *array, const arraydata_t *arrayclass);
+
+/// Creates the root of an orthogonal array. The root is appended to the list of arrays
+void create_root (const arraydata_t *arrayclass, arraylist_t &solutions);
 
 <<<<<<< HEAD
 /**
@@ -1772,9 +1721,9 @@ int array_diff (carray_p A, carray_p B, const rowindex_t r, const colindex_t c, 
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
 /// helper function to calculate J-values
-inline void fastJupdate (const array_t *array, rowindex_t N, const int J, const colindex_t *pp, array_t *tmp) {
+inline void fastJupdate (const array_t *array, rowindex_t N, const int J, const colindex_t *column_indices, array_t *tmp) {
         for (int i = 0; i < J; i++) {
-                carray_t *cp = array + N * pp[i];
+                carray_t *cp = array + N * column_indices[i];
                 for (rowindex_t r = 0; r < N; r++) {
                         tmp[r] += cp[r];
                 }
@@ -2028,15 +1977,22 @@ void showArrayList (const arraylist_t &lst);
 
 namespace arrayfile {
 
-/// format mode
+/// file format mode
 enum arrayfilemode_t {
+	/// text based format
         ATEXT,
-        ALATEX,
+	/// write arrays to a text file in a format that can be parsed by LaTeX
+		ALATEX,
+	/// binary format
         ABINARY,
+	/// binary format storing differences of arrays
         ABINARY_DIFF,
+	/// binary format storing differences of arrays and zero offsets
         ABINARY_DIFFZERO,
         AERROR,
+	/// automatically determine the format
         A_AUTOMATIC,
+	/// automatically determine the format (but binary)
         A_AUTOMATIC_BINARY
 };
 enum afilerw_t { READ, WRITE, READWRITE };
@@ -2131,7 +2087,7 @@ struct arrayfile_t {
         /// file opened for reading or writing
         afilerw_t rwmode;
 
-        // we cannot define SWIG variables as int32_t, we get errors in the Python module for some reason
+        // we cannot define SWIG variables as int32_t, we get errors in the Python module 
 
         /// number of arrays in the file
         int narrays;
@@ -2184,6 +2140,7 @@ struct arrayfile_t {
         /// append a single array to the file
         void append_array (const array_link &a, int specialindex = -1);
 
+<<<<<<< HEAD
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         int swigcheck () const {
 #ifdef SWIGCODE
@@ -2195,49 +2152,13 @@ struct arrayfile_t {
                 return 0;
 #endif
         }
+=======
+	/// return True if code is wrapper by SWIG
+        int swigcheck () const;
+>>>>>>> pieter/dev
 
-        std::string showstr () const {
-                if (this->isopen ()) {
-                        std::string modestr;
-                        switch (mode) {
-                        case ALATEX:
-                                modestr = "latex";
-                                break;
-                        case ATEXT:
-                                modestr = "text";
-                                break;
-                        case ABINARY:
-                                modestr = "binary";
-                                break;
-                        case ABINARY_DIFF:
-                                modestr = "binary_diff";
-                                break;
-                        case ABINARY_DIFFZERO:
-                                modestr = "binary_diffzero";
-                                break;
-                        case AERROR:
-                                modestr = "invalid";
-                                break;
-                        default:
-                                modestr = "error";
-                                myprintf ("arrayfile_t: showstr(): no such mode\n");
-                                break;
-                        }
-
-                        int na = narrays;
-                        if (this->rwmode == WRITE) {
-                                na = narraycounter;
-                        }
-
-                        std::string s = printfstring ("file %s: %d rows, %d columns, %d arrays", filename.c_str (),
-                                                      nrows, ncols, na);
-                        s += printfstring (", mode %s, nbits %d", modestr.c_str (), nbits);
-                        return s;
-                } else {
-                        std::string s = "file " + filename + ": invalid file";
-                        return s;
-                }
-        }
+	/// return string describing the object
+        std::string showstr () const;
 
         /// return current position in file
         size_t pos () const { return narraycounter; }
@@ -2262,30 +2183,12 @@ struct arrayfile_t {
         array_link diffarray;
 
         /// return header size for binary format array
-        int headersize () const { return 8 * sizeof (int32_t); };
+        int headersize () const;
         /// return size of bit array
-        int barraysize () const {
-                int num = sizeof (int32_t);
-
-                switch (this->nbits) {
-                case 8:
-                        num += nrows * ncols;
-                        break;
-                case 32:
-                        num += nrows * ncols * 4;
-                        break;
-                case 1: {
-                        word_addr_t num_of_words = nwords (nrows * ncols);
-                        num += sizeof (word_t) * num_of_words;
-                } break;
-                default:
-                        myprintf ("error: number of bits undefined\n");
-                        break;
-                }
-                return num;
-        };
+        int barraysize () const;
 
         /// wrapper function for fwrite or gzwrite
+<<<<<<< HEAD
         size_t afwrite (void *ptr, size_t t, size_t n) {
                 if (this->nfid == 0) {
                         myprintf ("afwrite: not implemented, we cannot write compressed files\n");
@@ -2331,6 +2234,9 @@ struct arrayfile_t {
                         mode = arrayfile::A_AUTOMATIC;
 
 =======
+=======
+        size_t afwrite (void *ptr, size_t t, size_t n);
+>>>>>>> pieter/dev
 
         /// wrapper function for fread or gzread
         size_t afread (void *ptr, size_t sz, size_t cnt);
@@ -2342,12 +2248,7 @@ struct arrayfile_t {
         /// read array and return index
         int read_array (array_t *array, const int nrows, const int ncols);
 
-        void finisharrayfile () {
-                if (this->mode == ATEXT) {
-                        fprintf (this->nfid, "-1\n");
-                }
-                this->closefile ();
-        }
+		void finisharrayfile();
 
         void setVerbose (int v) { this->verbose = v; }
 
@@ -2359,9 +2260,10 @@ struct arrayfile_t {
         void write_array_binary_diffzero (const array_link &A); 
 
       public:
-        int getnbits () { return nbits; }
+        int getnbits ();
 
         /// parse string to determine the file mode
+<<<<<<< HEAD
         static arrayfile::arrayfilemode_t parseModeString (const std::string format) {
                 arrayfile::arrayfilemode_t mode = arrayfile::ATEXT;
                 if (format == "AUTO" || format == "A") {
@@ -2389,6 +2291,9 @@ struct arrayfile_t {
                 }
                 return mode;
         }
+=======
+        static arrayfile::arrayfilemode_t parseModeString (const std::string format);
+>>>>>>> pieter/dev
 
         /// return number of bits necessary to store an array
         static int arrayNbits (const arraydata_t &ad) {
@@ -2438,25 +2343,34 @@ long nArrays (const char *fname);
 
 /** return information about file with arrays
  *
- * \param fname Filename of array file
+ * \param filename Filename of array file
  * \param number_of_arrays Variable is set with number of arrays
  * \param number_of_rows Variable is set with number of rows
  * \param number_of_columns Variable is set with number of columns
  */
-inline void arrayfileinfo (const char *fname, int &number_of_arrays, int &number_of_rows, int &number_of_columns) {
-        arrayfile_t af (fname, 0);
-        number_of_arrays = af.narrays;
-        number_of_rows = af.nrows;
-        number_of_columns = af.ncols;
-        af.closefile ();
-}
+void arrayfileinfo(const char *filename, int &number_of_arrays, int &number_of_rows, int &number_of_columns);
 
-/// read list of arrays from file and append to list
-int readarrayfile (const char *fname, arraylist_t *arraylist, int verbose = 1, int *setcols = 0,
-                   rowindex_t *setrows = 0, int *setbits = 0);
-
-/// read list of arrays from file
+/** Read all arrays in a file
+*
+* @param fname Filename to read from
+* @param verbose Verbosity level
+* @param setcols Pointer to return number of columns from array file
+* @return List of arrays
+*/
 arraylist_t readarrayfile (const char *fname, int verbose = 1, int *setcols = 0);
+
+/** Read all arrays in a file and append then to an array list
+*
+* @param fname Filename to read from
+* @param arraylist Pointer to list of arrays
+* @param verbose Verbosity level
+* @param setcols Reference that is set with the number of columns from the file
+* @param setrows Reference that is set with the number of rows from the file
+* @param setbits Reference that is set with the number of bits from the file
+* @return
+*/
+int readarrayfile(const char *fname, arraylist_t *arraylist, int verbose = 1, int *setcols = 0,
+	int *setrows = 0, int *setbits = 0);
 
 const int NRAUTO = 0;
 /// write a list of arrays to file on disk
@@ -2464,14 +2378,14 @@ int writearrayfile (const char *fname, const arraylist_t *arraylist,
                     arrayfile::arrayfilemode_t mode = arrayfile::ATEXT, int nrows = NRAUTO, int ncols = NRAUTO);
 
 /// write a list of arrays to file on disk
-int writearrayfile (const char *fname, const arraylist_t arraylist, arrayfile::arrayfilemode_t mode = arrayfile::ATEXT,
+int writearrayfile (const char *filename, const arraylist_t arraylist, arrayfile::arrayfilemode_t mode = arrayfile::ATEXT,
                     int nrows = NRAUTO, int ncols = NRAUTO);
 
 /// write a single array to file
-int writearrayfile (const char *fname, const array_link &al, arrayfile::arrayfilemode_t mode = arrayfile::ATEXT);
+int writearrayfile (const char *filename, const array_link &array, arrayfile::arrayfilemode_t mode = arrayfile::ATEXT);
 
 /// append a single array to an array file. creates a new file if no file exists
-int appendarrayfile (const char *fname, const array_link al);
+int append_arrayfile (const char *filename, const array_link array);
 
 /// Make a selection of arrays from binary array file, append to list
 void selectArrays (const std::string filename, std::vector< int > &idx, arraylist_t &fl, int verbose = 0);
@@ -2482,38 +2396,19 @@ array_link selectArrays (std::string filename, int ii);
 arrayfile_t *create_arrayfile (const char *fname, int rows, int cols, int narrays,
                                arrayfile::arrayfilemode_t mode = arrayfile::ATEXT, int nbits = 8);
 
-/// save a list of arrays to disk
-int save_arrays (arraylist_t &solutions, const arraydata_t *ad, const int n_arrays, const int n_procs,
-                 const char *resultprefix, arrayfile::arrayfilemode_t mode = ATEXT);
-
 #endif // FULLPACKAGE
 
-template < class atype >
-/// write array to output stream
-void write_array_format (std::ostream &ss, const atype *array, const int nrows, const int ncols, int width = 3) {
-        assert (array != 0 || ncols == 0);
-
-        int count;
-        for (int j = 0; j < nrows; j++) {
-                count = j;
-                for (int k = 0; k < ncols; k++) {
-                        const char *s = (k < ncols - 1) ? " " : "\n";
-                        ss << std::setw (width) << array[count] << s;
-                        count += nrows;
-                }
-        }
-}
-
 /// Make a selection of arrays
-arraylist_t selectArrays (const arraylist_t &al, std::vector< int > &idx);
+arraylist_t selectArrays (const arraylist_t &input_list, std::vector< int > &idx);
 /// Make a selection of arrays
-arraylist_t selectArrays (const arraylist_t &al, std::vector< long > &idx);
+arraylist_t selectArrays (const arraylist_t &input_list, std::vector< long > &idx);
 
 /// Make a selection of arrays, append to list
-void selectArrays (const arraylist_t &al, std::vector< int > &idx, arraylist_t &fl);
-void selectArrays (const arraylist_t &al, std::vector< long > &idx, arraylist_t &fl);
+void selectArrays (const arraylist_t &input_list, std::vector< int > &idx, arraylist_t &output_list);
+/// Make a selection of arrays, append to list
+void selectArrays (const arraylist_t &input_list, std::vector< long > &idx, arraylist_t &output_list);
 
-/// Make a selection of arrays, keep
+/// From a container keep all elements with specified indices
 template < class Container, class IntType > void keepElements (Container &al, std::vector< IntType > &idx) {
         for (int jj = idx.size () - 1; jj >= 0; jj--) {
                 if (!idx[jj]) {
@@ -2522,7 +2417,7 @@ template < class Container, class IntType > void keepElements (Container &al, st
         }
 }
 
-/// Make a selection of arrays, remove
+/// From a container remove all elements with specified indices
 template < class Container, class IntType > void removeElements (Container &al, std::vector< IntType > &idx) {
         for (int jj = idx.size () - 1; jj >= 0; jj--) {
                 if (idx[jj]) {
@@ -2578,12 +2473,9 @@ void write_array_format (const atype *array, const int nrows, const int ncols, i
                         count += nrows;
                 }
         }
-#ifdef RPACKAGE
-#else
 #ifdef FULLPACKAGE
         fflush (stdout);
         setbuf (stdout, NULL);
-#endif
 #endif
 }
 
@@ -2622,6 +2514,10 @@ void write_array_latex (std::ostream &ss, const atype *array, const int nrows, c
         }
         ss << "\\end{tabular}" << std::endl;
 }
+
+/** Convert a file with arrays to a different format
+ */
+void convert_array_file(std::string input_filename, std::string output_filename, arrayfile::arrayfilemode_t output_format, int verbose = 0);
 
 /// structure to write arrays to disk, thread safe
 struct arraywriter_t {
@@ -2725,42 +2621,14 @@ struct arraywriter_t {
  *
  * The header consists of 4 integers: 2 magic numbers, then the number of rows and columns
  */
-inline bool readbinheader (FILE *fid, int &nr, int &nc) {
-        if (fid == 0) {
-                return false;
-        }
-
-        double h[4];
-        int nn = fread (h, sizeof (double), 4, fid);
-        nr = (int)h[2];
-        nc = (int)h[3];
-
-        // myprintf("readbinheader: nn %d magic %f %f %f %f check %d %d\number_of_arrays", nn, h[0], h[1], h[2], h[3],
-        // h[0]==30397995, h[1]==12224883);
-        bool valid = false;
-
-        // check 2 numbers of the magic header
-        if (nn == 4 && h[0] == 30397995 && h[1] == 12224883) {
-                return true;
-        }
-
-        return valid;
-}
+bool readbinheader(FILE *fid, int &nr, int &nc);
 
 /// Write header for binary data file
-inline void writebinheader (FILE *fid, int nr, int nc) {
-        double h[4];
-        // write 2 numbers of the magic header
-        h[0] = 30397995;
-        h[1] = 12224883;
-        h[2] = nr;
-        h[3] = nc;
-        fwrite (h, sizeof (double), 4, fid);
-}
+void writebinheader(FILE *fid, int number_rows, int number_columns);
 
 template < class Type >
-/// Write a vector of integer elements to file
-void doublevector2binfile (const std::string fname, std::vector< Type > vals, int writeheader = 1) {
+/// Write a vector of numeric elements to binary file as double values
+void vector2doublebinfile (const std::string fname, std::vector< Type > vals, int writeheader = 1) {
         FILE *fid = fopen (fname.c_str (), "wb");
         if (fid == 0) {
                 fprintf (stderr, "doublevector2binfile: error with file %s\n", fname.c_str ());
@@ -2777,37 +2645,8 @@ void doublevector2binfile (const std::string fname, std::vector< Type > vals, in
 }
 
 /// Write a vector of vector elements to binary file
-inline void vectorvector2binfile (const std::string fname, const std::vector< std::vector< double > > vals,
-                                  int writeheader, int na) {
-        FILE *fid = fopen (fname.c_str (), "wb");
-
-        if (fid == 0) {
-                fprintf (stderr, "vectorvector2binfile: error with file %s\n", fname.c_str ());
-
-                throw_runtime_exception("vectorvector2binfile: error with file");
-        }
-
-        if (na == -1) {
-                if (vals.size () > 0) {
-                        na = vals[0].size ();
-                }
-        }
-        if (writeheader) {
-                writebinheader (fid, vals.size (), na);
-        } else {
-                myprintf ("warning: legacy file format\n");
-        }
-        for (unsigned int i = 0; i < vals.size (); i++) {
-                const std::vector< double > x = vals[i];
-                if ((int)x.size () != na) {
-                        myprintf ("error: writing incorrect number of elements to binary file\n");
-                }
-                for (unsigned int j = 0; j < x.size (); j++) {
-                        fwrite (&(x[j]), sizeof (double), 1, fid);
-                }
-        }
-        fclose (fid);
-}
+void vectorvector2binfile(const std::string fname, const std::vector< std::vector< double > > vals,
+	int writeheader, int na);
 
 /* Conversion to Eigen matrices */
 
@@ -2843,17 +2682,37 @@ MatrixFloat array2eigenX2 (const array_link &al);
 MatrixFloat array2eigenX2 (const array_link &array);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
-/// convert 2-level array to second order model matrix (intercept, X1, X2)
-MatrixFloat array2eigenModelMatrix (const array_link &al);
+/** Convert 2-level array to second order model matrix (intercept, X1, X2)
+ *
+ * \param array Design of which to calculate the model matrix
+ * \returns Eigen matrix with the model matrix
+ */
+MatrixFloat array2eigenModelMatrix (const array_link &array);
 
 /** Convert array to model matrix in Eigen format
  *
  * @see array2eigenModelMatrixMixed
  */
-MatrixFloat array2eigenMainEffects (const array_link &al, int verbose = 1);
+MatrixFloat array2eigenMainEffects (const array_link &array, int verbose = 1);
 
-/// create first and second order model matrix for mixed-level array
-std::pair< MatrixFloat, MatrixFloat > array2eigenModelMatrixMixed (const array_link &al, int verbose = 1);
+/** Create first and second order model matrix for mixed-level array
+ *
+ * \param array Input array
+ * \param verbose Verbosity level
+ * \returns Pair with main effects and two-factor interaction model
+ */ 
+std::pair< MatrixFloat, MatrixFloat > array2eigenModelMatrixMixed (const array_link &array, int verbose = 1);
+
+/** calculate number of parameters in the model matrix
+*
+* A list of integers is returned, with the number of columns in:
+*
+* - The intercept (always 1)
+* - The main effects
+* - The interaction effects (second order interaction terms without quadratics)
+* - The quadratic effects
+*/
+std::vector< int > numberModelParams(const array_link &array, int order = -1);
 
 /** return index of specified array in a file. returns -1 if array is not found
  *
@@ -2881,6 +2740,4 @@ int arrayInList (const array_link &al, const arraylist_t &arrays, int verbose = 
 int arrayInList (const array_link &array, const arraylist_t &arrays, int verbose = 1);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
-#endif
 
-// kate: indent-mode cstyle; indent-width 4; replace-tabs on; ;

@@ -13,6 +13,10 @@ import os
 import numpy as np
 import time
 import logging
+import warnings
+
+class MissingMatplotLibException(Exception):
+    pass
 
 try:
     import matplotlib
@@ -28,7 +32,7 @@ import oapackage.oahelper as oahelper
 
 from oapackage.markup import oneliner as e
 
-#%%
+# %%
 
 
 def array2Dtable(sols, verbose=1, titlestr=None):
@@ -60,7 +64,15 @@ def array2Dtable(sols, verbose=1, titlestr=None):
 
 def generateDscatter(dds, second_index=0, first_index=1, lbls=None, ndata=3, nofig=False, fig=20,
                      scatterarea=80, verbose=0, setWindowRectangle=False):
-    """ Generate scatter plot for D and Ds efficiencies """
+    """ Generate scatter plot for D and Ds efficiencies
+    
+    Args:
+        dds (array): array with D-efficiencies
+    Returns:
+        dict: contains handles to plotting elements
+    """
+    if matplotlib is None:
+        raise MissingMatplotLibException
     data = dds.T
     pp = oahelper.createPareto(dds)
     paretoidx = np.array(pp.allindices())
@@ -106,20 +118,19 @@ def generateDscatter(dds, second_index=0, first_index=1, lbls=None, ndata=3, nof
     if lbls is None:
         lbls = ['%d' % i for i in range(len(idx))]
 
-    
     if fig is not None:
         figh = plt.figure(fig)
         plt.clf()
         figh.set_facecolor('w')
         ax = plt.subplot(111)
-    
+
         ax.scatter(data[first_index, nonparetoidx], data[second_index, nonparetoidx], s=.33 * scatterarea,
                    c=(.5, .5, .5), linewidths=0, alpha=alpha, label='Non-pareto design')
 
         for jj, ii in enumerate(idx):
             gidx = (colors == ii).nonzero()[0]
             gp = np.intersect1d(paretoidx, gidx)
-    
+
             color = mycmap[jj]
             cc = [color] * len(gp)
             if verbose:
@@ -155,12 +166,11 @@ def generateDscatter(dds, second_index=0, first_index=1, lbls=None, ndata=3, nof
             plt.draw()
             plt.pause(1e-3)
     else:
-        ax=None
-        xlabelhandle=None
-        pltlegend=None
+        ax = None
+        xlabelhandle = None
+        pltlegend = None
     hh = dict({'ax': ax, 'xlabelhandle': xlabelhandle, 'pltlegend': pltlegend})
     return hh
-#%%
 
 
 def generateDpage(outputdir, arrayclass, dds, allarrays, fig=20, optimfunc=[1, 0, 0],
@@ -205,8 +215,6 @@ def generateDpage(outputdir, arrayclass, dds, allarrays, fig=20, optimfunc=[1, 0
             print('generateDpage: writen scatterplot to %s' % scatterfile)
         plt.savefig(scatterfile, bbox_inches='tight', pad_inches=0.25, dpi=160)
 
-    #%% Create page
-
     page = markup.page()
 
     if makeheader:
@@ -222,8 +230,6 @@ def generateDpage(outputdir, arrayclass, dds, allarrays, fig=20, optimfunc=[1, 0
 
     page.h1('Results for array class %s ' % xstr)
 
-    # mathjax is not updated properly...
-    ss = r'The Pareto optimaly was calculated according to the statistics \(D\), \(D1\) and \(Ds\).'
     ss = r'The Pareto optimaly was calculated according to the statistics D, D<sub>1</sub> and D<sub>s</sub>.'
     if npareto == 1:
         page.p('Generated %d arrays, %d is Pareto optimal. %s' %
@@ -273,7 +279,7 @@ def generateDpage(outputdir, arrayclass, dds, allarrays, fig=20, optimfunc=[1, 0
              style="margin: 10px; width:95%; min-width: 300px;  max-width:1100px; height: auto; ")
 
     citationstr = markup.oneliner.a(
-        'Complete Enumeration of Pure-Level and Mixed-Level Orthogonal Arrays', href='http://dx.doi.org/10.1002/jcd.20236')
+        'Complete Enumeration of Pure-Level and Mixed-Level Orthogonal Arrays', href='https://doi.org/10.1002/jcd.20236')
 
     page.br(clear='both')
     page.p(
@@ -319,7 +325,7 @@ def optimDeffPython(A0, arrayclass=None, niter=10000, nabort=2500, verbose=1, al
     if arrayclass is None:
         s = A0.getarray().max(axis=0) + 1
     else:
-        s = arrayclass.getS()
+        s = arrayclass.factor_levels()
     sx = tuple(s.astype(np.int64))
     sx = tuple([int(v) for v in sx])
 
@@ -406,7 +412,7 @@ def optimDeffPython(A0, arrayclass=None, niter=10000, nabort=2500, verbose=1, al
     return d, A
 
 
-#%%
+# %%
 def filterPareto(scores, dds, sols, verbose=0):
     """ From a list of designs select only the pareto optimal designs
 
@@ -427,8 +433,6 @@ def filterPareto(scores, dds, sols, verbose=0):
     psols = [sols[i] for i in paretoidx]
 
     return pscores, pdds, psols
-
-#%%
 
 
 def scoreDn(dds, optimfunc):
@@ -478,7 +482,7 @@ def selectDn(scores, dds, sols, nout=1, sortfull=True):
     scores = scores[idx]
     dds = dds[idx, :]
     sols = [sols[ii] for ii in idx]
-    if not nout is None:
+    if nout is not None:
         # sort the arrays
         nout = np.minimum(nout, scores.size)
         scores = scores[0:nout]
@@ -491,40 +495,40 @@ def Doptimize(arrayclass, nrestarts=10, optimfunc=[
               1, 0, 0], verbose=1, maxtime=180, selectpareto=True, nout=None, method=oalib.DOPTIM_UPDATE, niter=100000, nabort=0, dverbose=1):
     """ Calculate D-optimal designs
 
+    The method uses a coordinate-exchange algorithm find a D-optimal design in the class specified by the
+    arrayclass. The optimality is defined in terms of the optimization parameters. The optimization is performed
+    multiple times (specified by the nrestarts parameter) to prevent finding a design in a local minmum of the
+    target function. 
 
-    For more details see the paper "Two-Level Designs to Estimate All Main
-    Effects and Two-Factor Interactions", http://dx.doi.org/10.1080/00401706.2016.1142903
+    The optimization target and the Pareto optimality are defined in terms of the D-efficiency, main effect robustness
+    (or Ds-optimality) and the D1-efficiency of the design. For more details see the paper "Two-Level Designs to Estimate All Main
+    Effects and Two-Factor Interactions", https://doi.org/10.1080/00401706.2016.1142903
 
-    Parameters
-    ----------
-    arrayclass : object
-        Specifies the type of design to optimize
-    nrestarts : integer
-        Number of restarts of the algorithm
-    optimfunc : list with 3 floats
-        Gives the optimization weights
-    verbose : integer
-        A higher numer gives more output
-    maxtime: float
-        Maximum running time of the algorithm
-    selectpareto : boolean, default is True
-        If True then only the Pareto optimal designs are returned
-    nout : integer, default None
-        Number of designs to return. If None,  return all designs
+    Args:
+      arrayclass (object): Specifies the type of design to optimize
+      nrestarts (int): Number of restarts of the algorithm
+      optimfunc (list with 3 floats): Gives the optimization weights :math:`\\alpha` of the target function :math:`\\alpha[0] D+\\alpha[1] D_s+\\alpha[2] D_1`
+      verbose (int): Verbosity level. A higher numer gives more output
+      maxtime (float): Maximum running time of the algorithm. If this time is exceeded the algorithm is aborted.
+      selectpareto (bool): default is True. If True then only the Pareto optimal designs are returned
+      nout (int or None): Number of designs to return. If None,  return all designs
 
     Returns
     -------
-    scores: list
-        list of scores
-    dds: array
-        array with calculated efficiencies
-    designs: list
-        list of generated designs
-    nrestarts: int
-        number of restarts used
+            scores : list:
+                list of scores
+            dds: array
+                array with calculated efficiencies            
+            designs:
+                list of generated designs
+            nrestarts: int
+                number of restarts used
 
 
     """
+    if arrayclass.strength !=0:
+        warnings.warn('Doptimize can only handle designs with strength 0', UserWarning)
+        
     if verbose:
         print('Doptim: optimization class %s' % arrayclass.idstr())
     t0 = time.time()
@@ -538,7 +542,7 @@ def Doptimize(arrayclass, nrestarts=10, optimfunc=[
         dds, sols = rr.dds, rr.designs
         dds = np.array([x for x in dds])
         # needed because of SWIG wrapping of struct type
-        sols = [x.clone() for x in sols]
+        sols = [design.clone() for design in sols]
         nrestarts = rr.nrestarts
         scores = np.array(
             [oalib.scoreD(A.Defficiencies(), optimfunc) for A in sols])

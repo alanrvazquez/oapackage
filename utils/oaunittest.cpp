@@ -24,6 +24,7 @@ Copyright: See LICENSE.txt file that comes with this distribution
 #include "tools.h"
 
 #include "graphtools.h"
+#include "unittests.h"
 
 #include "Eigen/Dense"
 
@@ -32,6 +33,7 @@ Copyright: See LICENSE.txt file that comes with this distribution
 #include <string>
 #endif
 
+<<<<<<< HEAD
 template < class Type > void permute (Type *source, Type *target, const std::vector< int > p) {
         for (size_t i = 0; i < p.size (); i++)
                 target[i] = source[p[i]];
@@ -351,10 +353,15 @@ void test_array_manipulation (int verbose = 1) {
 =======
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 }
+=======
+
+
+enum { UNITTEST_SUCCESS, UNITTEST_FAIL };
+>>>>>>> pieter/dev
 
 /** unittest for oapackage
  *
- * Returns UGOOD if all tests are ok.
+ * Returns UNITTEST_SUCCESS if all tests are ok.
  *
  */
 int oaunittest (int verbose, int writetests = 0, int randval = 0) {
@@ -364,7 +371,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
 
         srand (randval);
 
-        int allgood = UGOOD;
+        int allgood = UNITTEST_SUCCESS;
 
         Combinations::initialize_number_combinations (20);
 
@@ -381,6 +388,9 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
 
                 myassert (sum == 0, "unittest error: construction of interaction matrices\n");
         }
+
+		cprintf(verbose, "%s: reduceConferenceTransformation\n", bstr);
+		myassert(unittest_reduceConferenceTransformation()==0, "unittest unittest_reduceConferenceTransformation failed");
 
         /* constructors */
         {
@@ -424,7 +434,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
 
         {
                 cprintf (verbose, "%s: generators for conference matrix extensions\n", bstr);
-                checkGenerators (verbose);
+                test_conference_candidate_generators (verbose);
         }
 
         {
@@ -555,7 +565,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
 
                         if (j5max != mm[jj]) {
                                 printfd ("j5max %d (should be %d)\n", j5max, mm[jj]);
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                                 return allgood;
                         }
                 }
@@ -571,29 +581,29 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                 al.create_root (adataX);
 
                 if (checkTransformationInverse (al))
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
 
                 if (checkTransformationComposition (al, verbose >= 2))
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
 
                 al = exampleArray (5, 1);
                 if (checkTransformationInverse (al))
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
 
                 if (checkTransformationComposition (al))
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
 
                 for (int i = 0; i < 15; i++) {
                         al = exampleArray (18, 0);
                         if (checkConferenceComposition (al))
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                         if (checkConferenceInverse (al))
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                         al = exampleArray (19, 0);
                         if (checkConferenceComposition (al))
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                         if (checkConferenceInverse (al))
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                 }
         }
 
@@ -733,7 +743,6 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                 array_link al = exampleArray (1, 1);
 
                 lmc_t r = LMCcheckOriginal (al);
-                // printfd("r %d, strength %d\n", r, strength);
 
                 myassert (r != LMC_LESS, "LMC check of array in normal form");
 
@@ -875,7 +884,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                         alr.showarraycompact ();
                         printf ("-- alx \n");
                         alx.showarraycompact ();
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
                 }
         }
 
@@ -908,7 +917,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                         bool c = (al == alr);
                         if (!c) {
                                 printf ("oaunittest: error: reduction of randomized array failed!\n");
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                         }
                 }
         }
@@ -954,7 +963,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                                 printf ("  efficiencies: D %f Ds %f D1 %f Ds0 %f\n", d[0], d[1], d[2], d[3]);
                         if (fabs (d[0] - al.Defficiency ()) > 1e-10) {
                                 printf ("oaunittest: error: Defficiency not good!\n");
-                                allgood = UERROR;
+                                allgood = UNITTEST_FAIL;
                         }
                 }
                 al = exampleArray (8, vb);
@@ -984,7 +993,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                         d = al.Defficiencies (2, 1);
                         printf ("  efficiencies: D %f Ds %f D1 %f Ds0 %f\n", d[0], d[1], d[2], d[3]);
 
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
                         exit (1);
                 }
 
@@ -1028,7 +1037,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                 boost::filesystem::path tmpdir = boost::filesystem::temp_directory_path ();
                 boost::filesystem::path temp = boost::filesystem::unique_path ("test-%%%%%%%.oa");
 
-                const std::string tempstr = (tmpdir / temp).native (); // optional
+                const std::string tempstr = (tmpdir / temp).native (); 
 
                 if (verbose >= 2)
                         printf ("generate text OA file: %s\n", tempstr.c_str ());
@@ -1038,7 +1047,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                 int narrays = 10;
                 arrayfile_t afile (tempstr.c_str (), nrows, ncols, narrays, ATEXT);
                 for (int i = 0; i < narrays; i++) {
-                        array_link al (nrows, ncols, array_link::INDEX_DEFAULT);
+                        array_link al (nrows, ncols, array_link::INDEX_DEFAULT);                        
                         afile.append_array (al);
                 }
                 afile.closefile ();
@@ -1050,8 +1059,8 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
                 // check read/write of binary file
 
                 arraylist_t ll0;
-                ll0.push_back (exampleArray (22));
-                ll0.push_back (exampleArray (22).randomperm ());
+                ll0.push_back (exampleArray (7));
+                ll0.push_back (exampleArray (7).randomcolperm ());
                 writearrayfile (tempstr.c_str (), ll0, ABINARY);
                 arraylist_t ll = readarrayfile (tempstr.c_str ());
                 myassert (ll0.size () == ll.size (), "read and write of arrays: size of list");
@@ -1087,7 +1096,7 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
 
                         if (alr1 != alr2)
                                 printf ("oaunittest: error: Nauty reductions unequal!\n");
-                        allgood = UERROR;
+                        allgood = UNITTEST_FAIL;
                 }
         }
 
@@ -1096,10 +1105,10 @@ int oaunittest (int verbose, int writetests = 0, int randval = 0) {
 
         if (allgood) {
                 printf ("OA unittest: all tests ok\n");
-                return UGOOD;
+                return UNITTEST_SUCCESS;
         } else {
                 printf ("OA unittest: ERROR!\n");
-                return UERROR;
+                return UNITTEST_FAIL;
         }
 }
 

@@ -15,7 +15,6 @@
 #include "strength.h"
 
 template < class basetype >
-/// Helper function
 vindex_t **set_indices (colindex_t **colcombs, basetype *bases, const int k, colindex_t ncolcombs) {
         int prod, **indices = 0;
 
@@ -58,7 +57,7 @@ strength_freq_table new_strength_freq_table (int ncolcombs, int *nvalues, int &n
 <<<<<<< HEAD
 =======
 /// Return index of an orthogonal array
-inline int get_oaindex(const array_t *s, const colindex_t strength, const colindex_t N) {
+int get_oaindex(const array_t *s, const colindex_t strength, const colindex_t N) {
 	int oaindex = N;
 	for (colindex_t z = 0; z < strength; z++) {
 		oaindex /= s[z];
@@ -68,6 +67,63 @@ inline int get_oaindex(const array_t *s, const colindex_t strength, const colind
 }
 
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+/**
+* Return all column combinations including a fixed column.
+* At the same time allocate space for the number of values these columns have
+* @param xlambda
+* @param nvalues
+* @param ncolcombs
+* @param s
+* @param strength
+* @param fixedcol
+* @param N
+* @return
+*/
+colindex_t **set_colcombs_fixed(int *&xlambda, int *&nvalues, int &ncolcombs, const array_t *s, const int strength,
+	const int fixedcol, const int N) {
+	log_print(DEBUG + 1, "set_colcombs_fixed: strength %d, fixedcol %d, N%d\n", strength, fixedcol, N);
+	register int i, j;
+	int prod;
+	colindex_t **colcombs = 0;
+
+	int n = fixedcol;
+	int k = strength - 1; // we keep 1 column fixed, choose k columns
+	ncolcombs = ncombs(n, k);
+
+	colcombs = malloc2d< colindex_t >(ncolcombs, strength);
+	xlambda = (int *)malloc(ncolcombs * sizeof(int));
+	nvalues = (int *)malloc(ncolcombs * sizeof(int));
+
+	log_print(DEBUG, "ncolcombs: %d\n", ncolcombs);
+
+	/* set last entry to fixed column */
+	for (i = 0; i < ncolcombs; i++)
+		colcombs[i][k] = fixedcol;
+
+	for (i = 0; i < k; i++) // set initial combination
+		colcombs[0][i] = i;
+
+	for (i = 1; i < ncolcombs; i++) {
+		memcpy(colcombs[i], colcombs[i - 1], k * sizeof(colindex_t));
+		next_combination< colindex_t >(colcombs[i], k, n);
+
+		prod = 1;
+		for (j = 0; j < strength; j++) {
+			prod *= s[colcombs[i][j]];
+		}
+		nvalues[i] = prod;
+		xlambda[i] = N / prod;
+	}
+
+	prod = 1; // First lambda manually, because of copy-for-loop
+	for (i = 0; i < strength; i++)
+		prod *= s[colcombs[0][i]];
+	nvalues[0] = prod;
+	xlambda[0] = N / prod;
+
+	return colcombs;
+}
+
 /**
  * @brief Constructor fuction
  */
@@ -87,8 +143,7 @@ extend_data_t::extend_data_t (const arraydata_t *ad, colindex_t extcol)
         /* set column combinations with extending column fixed */
         int ncolcombs;
         es->colcombs = set_colcombs_fixed (es->lambda, es->nvalues, ncolcombs, ad->s, ad->strength, extcol, ad->N);
-        es->lambda2lvl = es->adata->N / pow (double(2), ad->strength); // NOTE: use cross-platform interger power
-        // printf("lambda2lvl: %d %d\n", es->lambda[0], es->lambda2lvl);
+        es->lambda2lvl = es->adata->N / pow (double(2), ad->strength);
         es->indices = set_indices (es->colcombs, ad->s, ad->strength,
                                    ncolcombs); // sets indices for frequencies, does the malloc as well
         es->r_index = create_reverse_colcombs_fixed (ncolcombs);
@@ -126,8 +181,8 @@ extend_data_t::~extend_data_t () {
         free2d (es->indices); //, es->ncolcombs);
 
 #ifdef COUNTELEMENTCHECK
-        // OPTIMIZE: better to check these pointers are non-zero
-        free (this->elements);
+        if (this->elements!=0)
+	  free (this->elements);
 #endif
 
         free2d_irr (this->freqtable);
@@ -212,15 +267,6 @@ rev_index *create_reverse_colcombs (colindex_t **colcombs, const int ncols, cons
         }
         delete[] tmp;
 
-        // print the resulting reverse index
-        if (log_print (DEBUG, "")) {
-                for (int i = 0; i < ncols; i++) {
-                        log_print (DEBUG, "%i:\t", i);
-                        for (int j = 0; j < rev_colcombs[i].nr_elements; j++)
-                                log_print (DEBUG, "%i, ", rev_colcombs[i].index[j]);
-                        log_print (DEBUG, "\n");
-                }
-        }
         return rev_colcombs;
 }
 
@@ -234,10 +280,60 @@ strength_check_t::~strength_check_t () {
         }
 }
 
+void strength_check_t::set_colcombs(const arraydata_t &ad) {
+	int verbose = 0;
+
+	int prod;
+	int n = ad.ncols;
+	int N = ad.N;
+	const carray_t *s = ad.s;
+
+	int k = strength; // we keep 1 column fixed, choose k columns
+	ncolcombs = ncombs(n, k);
+
+	if (verbose)
+		myprintf("strength_check_t: set_colcombs: ncolcombs %d, strength %d\n", ncolcombs,
+			strength);
+	this->colcombs = malloc2d< colindex_t >(ncolcombs, strength);
+	this->lambda = (int *)malloc(ncolcombs * sizeof(int));
+	this->nvalues = (int *)malloc(ncolcombs * sizeof(int));
+
+	// set initial combination
+	for (int i = 0; i < k; i++)
+		colcombs[0][i] = i;
+
+	for (int i = 1; i < ncolcombs; i++) {
+		memcpy(colcombs[i], colcombs[i - 1], k * sizeof(colindex_t));
+		next_combination< colindex_t >(colcombs[i], k, n);
+
+		prod = 1;
+		for (int j = 0; j < strength; j++) {
+			if (verbose >= 2)
+				myprintf("i %d j %d: %d\n", i, j, colcombs[i][j]);
+			prod *= s[colcombs[i][j]];
+		}
+		nvalues[i] = prod;
+		lambda[i] = N / prod;
+	}
+
+	prod = 1; // First lambda manually, because of copy-for-loop
+	for (int j = 0; j < strength; j++)
+		prod *= s[colcombs[0][j]];
+	nvalues[0] = prod;
+	lambda[0] = N / prod;
+}
+
+void strength_check_t::create_reverse_colcombs_fixed() { r_index = ::create_reverse_colcombs_fixed(ncolcombs); }
+
 /// perform strength check on an array
 bool strength_check (const array_link &al, int strength, int verbose) {
         if (strength == 0)
                 return true;
+
+		// first a plain test of divisibility
+		arraydata_t ad0 = arraylink2arraydata(al, 0, 0);
+		if (!check_divisibility(al.n_rows, al.n_columns, strength, ad0.s) )
+			return false;
 
         arraydata_t ad = arraylink2arraydata (al, 0, strength);
         strength_check_t strengthcheck (strength);
@@ -250,7 +346,6 @@ bool strength_check (const array_link &al, int strength, int verbose) {
                 myprintf ("strength_check array: N %d, k %d, strength %d\n", ad.N, al.n_columns, ad.strength);
         strengthcheck.set_colcombs (ad);
 
-        // myprintf ( "nvalues: " ); print_perm ( nvalues, strengthcheck.ncolcombs );
         strengthcheck.indices =
             set_indices (strengthcheck.colcombs, ad.s, ad.strength,
                          strengthcheck.ncolcombs); // sets indices for frequencies, does the malloc as well
@@ -331,7 +426,7 @@ inline int freq_position (rowindex_t N, rowindex_t activerow, colindex_t ncols, 
 
 /* NOTE:
  *
- * The size of the freqtable is pretty larg compared to the number of nonzero elements
+ * The size of the freqtable is pretty largr compared to the number of nonzero elements
  * for a single row-column-value pair. Hence we use a sparse representation of this table where possible.
  *
  */
@@ -349,15 +444,10 @@ void add_element_freqtable (extend_data_t *es, rowindex_t activerow, carray_t *a
         const array_t elem = array[es->extcolumn * es->N + activerow];
         int idx = es->adata->s[es->extcolumn] * activerow + elem;
 
-        // int *postable = es->freqtable_elem[idx];
         int *postable3 = es->element2freqtable[idx];
-        freq_t *freqtable0 = &(freqtable[0][0]);
+        int *freqtable0 = &(freqtable[0][0]);
         for (int z = 0; z < es->ncolcombs; z++) {
-                // int freqpos = postable[z]; freqtable[z][freqpos]++;
-
-                // printf("%ld -> %ld\n", freqtable[z]+freqpos, postable2[z] );
                 freqtable0[postable3[z]]++;
-                // printf("row %d elem %d, z %d, freqpos %d\n", activerow, elem, z, freqpos);
         }
 }
 
@@ -366,32 +456,13 @@ void add_element_freqtable_col (extend_data_t *es, rowindex_t activerow, carray_
         const array_t elem = arraycol[activerow];
         int idx = es->adata->s[es->extcolumn] * activerow + elem;
 
-        // int *postable = es->freqtable_elem[idx];
         int *postable3 = es->element2freqtable[idx];
-        freq_t *freqtable0 = &(freqtable[0][0]);
+		int *freqtable0 = &(freqtable[0][0]);
         for (int z = 0; z < es->ncolcombs; ++z) {
-                // int freqpos = postable[z]; freqtable[z][freqpos]++;
-
-                // printf("%ld -> %ld\n", freqtable[z]+freqpos, postable2[z] );
                 freqtable0[postable3[z]]++;
-                // printf("row %d elem %d, z %d, freqpos %d\n", activerow, elem, z, freqpos);
         }
 }
 
-/*
-void add_element_freqtable_legacy(rowindex_t N, extend_data_t *es, rowindex_t activerow, carray_t *array,
-strength_freq_table freqtable)
-{
-        const array_t elem = array[es->extcolumn*es->N + activerow];
-        int idx = es->adata->s[es->extcolumn]*activerow+elem;
-
-        int *postable = es->freqtable_elem[idx];
-        for(int z=0;z<es->ncolcombs;z++) {
-                int freqpos = postable[z];
-                freqtable[z][freqpos]++;
-        }
-}
-*/
 #else
 
 /* *
@@ -449,17 +520,17 @@ void print_frequencies (int **frequencies, const int nelements, const int *lambd
  * @param es
  * @param array
  */
-void init_frequencies (extend_data_t *es, array_t *array) {
+void extend_data_t::init_frequencies (array_t *array) {
+	    extend_data_t *es = this;
         log_print (DEBUG, "init_frequencies: extension column %d\n", es->extcolumn);
-        array_t sc = es->adata->s[es->extcolumn];
+        array_t number_factor_levels = es->adata->s[es->extcolumn];
 
         /* loop over rows */
         for (rowindex_t row = 0; row < es->adata->N; row++) {
                 /* loop over all values of the rows */
-                for (array_t v = 0; v < sc; v++) {
-                        int idx = row * sc + v;
+                for (array_t value_idx = 0; value_idx < number_factor_levels; value_idx++) {
+                        int idx = row * number_factor_levels + value_idx;
 
-                        // log_print(NORMAL-1, "init_frequencies: setting idx %d\n", idx);
                         /* clear data */
                         memset (es->freqtable_elem[idx], 0, es->ncolcombs * sizeof (int));
                         memset (es->element2freqtable[idx], 0, es->ncolcombs * sizeof (int));
@@ -472,7 +543,7 @@ void init_frequencies (extend_data_t *es, array_t *array) {
                         for (int i = 0; i < es->ncolcombs; i++) {  // find all columns column p->col is involved with
                                 cur_combi = es->r_index->index[i]; /* select a combination of t columns */
                                 array_t tmp = array[es->adata->N * es->extcolumn + row];
-                                array[es->adata->N * es->extcolumn + row] = v;
+                                array[es->adata->N * es->extcolumn + row] = value_idx;
                                 int freq_pos = freq_position (N, row, strength, es->colcombs[cur_combi],
                                                               es->indices[cur_combi], array);
                                 es->freqtable_elem[idx][i] = freq_pos;
@@ -495,8 +566,6 @@ void init_frequencies (extend_data_t *es, array_t *array) {
  */
 void recount_frequencies (int **frequencies, extend_data_t *es, colindex_t currentcol, rowindex_t rowstart,
                           rowindex_t rowlast, carray_t *array) {
-        // myprintf("recount_frequencies: rowstart %d, rowlast %d, es->ncolcombs %d\n", rowstart, rowlast,
-        // es->ncolcombs);
         // reset old values
         for (int i = 0; i < es->ncolcombs; i++) {
                 memset (frequencies[i], 0, es->nvalues[i] * sizeof (int));
@@ -508,8 +577,6 @@ void recount_frequencies (int **frequencies, extend_data_t *es, colindex_t curre
         }
 }
 
-#ifdef FULLPACKAGE
-
 bool valid_element (const extend_data_t *es, const extendpos *p, carray_t *array)
 /*Put the possibliy correct value in p->value and it will be tested, given the frequency table, lambdas etc*/
 {
@@ -517,17 +584,12 @@ bool valid_element (const extend_data_t *es, const extendpos *p, carray_t *array
 #ifdef FREQELEM
         /* perform strength check using frequency element cache */
         const int idx = p->row * es->adata->s[es->extcolumn] + p->value;
-        // int *freqpositions = es->freqtable_elem[idx];
         int *freqpositions2 = es->element2freqtable[idx];
-        freq_t *freqtable0 = &(es->freqtable[0][0]);
+		int *freqtable0 = &(es->freqtable[0][0]);
 
-        // OPTIMIZE: we can improve the performance by changing the ordering in the frequency table. this makes a
-        // difference for cases with high strength and high number of columns
-        for (int z = 0; z < es->ncolcombs; z++) {
-                
+        for (int z = 0; z < es->ncolcombs; z++) {              
                         if (freqtable0[freqpositions2[z]] + 1 > es->lambda[z])
                                 return false;
-                
         }
         return true;
 #else
@@ -560,21 +622,12 @@ bool valid_element_2level (const extend_data_t *es, const extendpos *p)
 #ifdef FREQELEM
         /* perform strength check using frequency element cache */
         const int idx = p->row * es->adata->s[es->extcolumn] + p->value;
-        // int *freqpositions = es->freqtable_elem[idx];
         int *freqpositions2 = es->element2freqtable[idx];
-        freq_t *freqtable0 = &(es->freqtable[0][0]);
+		int *freqtable0 = &(es->freqtable[0][0]);
 
-        // OPTIMIZE: we can improve the performance by changing the ordering in the frequency table. this makes a
-        // difference for cases with high strength and high number of columns
         for (int z = 0; z < es->ncolcombs; z++) {
-                // int freq_pos = freqpositions[z];
-
-                // OPTIMIZE: create a lambda minus one table
-                // IDEA: use structure of freqtable to make better indexing
-
                 if (freqtable0[freqpositions2[z]] >=
-                    es->lambda2lvl) { // (es->freqtable[z][freq_pos]  >= es->lambda2lvl)
-                        // cout << "colcomb:" << z << endl;
+                    es->lambda2lvl) { 
                         return false;
                 }
         }
@@ -584,8 +637,6 @@ bool valid_element_2level (const extend_data_t *es, const extendpos *p)
         printf ("valid_element_2level: not implemented\n");
 #endif
 }
-
-#endif
 
 bool strength_check (const arraydata_t &ad, const array_link &al, int verbose) {
         myassert (ad.ncols >= al.n_columns, "strength_check: array has too many columns");
@@ -602,13 +653,10 @@ bool strength_check (const arraydata_t &ad, const array_link &al, int verbose) {
         strengthcheck.colcombs = set_colcombs_fixed (strengthcheck.lambda, strengthcheck.nvalues,
                                                      strengthcheck.ncolcombs, ad.s, ad.strength, fixcol, ad.N);
 
-        // myprintf ( "nvalues: " ); print_perm ( nvalues, strengthcheck.ncolcombs );
         strengthcheck.indices =
             set_indices (strengthcheck.colcombs, ad.s, ad.strength,
                          strengthcheck.ncolcombs); // sets indices for frequencies, does the malloc as well
         strengthcheck.create_reverse_colcombs_fixed ();
-
-        //	strengthcheck.r_index = create_reverse_colcombs_fixed(ncolcombs);
 
         int val = true;
         strengthcheck.freqtable =
@@ -621,11 +669,8 @@ bool strength_check (const arraydata_t &ad, const array_link &al, int verbose) {
                 myprintf ("before:\n");
                 strengthcheck.print_frequencies ();
         }
-        //   myprintf ( "  table of size %d\n", strengthcheck.freqtablesize );
 
         for (int i = 0; i < strengthcheck.ncolcombs; i++) {
-                // myprintf ( "columns %d: ", i ); print_perm ( strengthcheck.colcombs[i], strength );
-
                 assert (ad.N <= MAXROWS);
                 int valindex[MAXROWS];
                 std::fill_n (valindex, ad.N, 0);
@@ -644,8 +689,6 @@ bool strength_check (const arraydata_t &ad, const array_link &al, int verbose) {
                 }
 
                 for (int j = 0; j < strengthcheck.nvalues[i]; j++) {
-                        //    myprintf ( "strength: i %d, j %d: %d %d\n", i, j, strengthcheck.freqtable[i][j],
-                        //    nvalues[i] );
                         if (strengthcheck.freqtable[i][j] != ad.N / strengthcheck.nvalues[i]) {
                                 if (verbose >= 2)
                                         myprintf ("no good strength: i %d, j %d: %d %d\n", i, j,
@@ -658,48 +701,37 @@ bool strength_check (const arraydata_t &ad, const array_link &al, int verbose) {
                 if (val == false)
                         break;
         }
-        // myprintf ( "nvalues: " ); print_perm ( nvalues, strengthcheck.ncolcombs );
         if (verbose >= 2) {
                 myprintf ("table of counted value pairs\n");
                 strengthcheck.print_frequencies ();
         }
-        //	print_frequencies(strengthcheck.freqtable, strengthcheck.ncolcombs, nvalues, ad.N);
-
         return val;
 }
 
-/*!
-  check_divisibility checks if the number of runs is a multiple of any combination of the number of factors.
-  The function only returns true or false, further alction should be done by the calling function.
-  \brief Checks on the divisibility of the number of runs by the product of the levels in the factors for all t-tuples
-  */
-bool check_divisibility (const arraydata_t *ad) {
-        const int ncolcombs = ncombs (ad->ncols, ad->strength);
+/***  Checks on the divisibility of the number of runs by the product of the levels in the factors for all t-tuples
+ *
+ */
+bool check_divisibility(int N, int ncols, int strength, const array_t * s) {
+
+        const int ncolcombs = ncombs (ncols, strength);
         int prod, *colcombs = 0;
         bool ret = true;
 
-        colcombs = (int *)malloc (ad->strength * sizeof (int));
+        colcombs = (int *)malloc (strength * sizeof (int));
 
         /* loop over all combinations of t-tuples of columns */
         for (int i = 0; i < ncolcombs; i++) {
                 if (i == 0) // first combination needs to be set
-                        for (int j = 0; j < ad->strength; j++)
+                        for (int j = 0; j < strength; j++)
                                 colcombs[j] = j;
                 else
-                        next_comb (colcombs, ad->strength, ad->ncols); // get next combination
+                        next_comb (colcombs, strength, ncols); // get next combination
 
                 prod = 1;
-                for (int j = 0; j < ad->strength; j++) {
-                        prod *= ad->s[colcombs[j]];
-                        // cout << "prod: " << prod << endl;
+                for (int j = 0; j < strength; j++) {
+                        prod *= s[colcombs[j]];
                 }
-                if (ad->N % prod != 0) {
-                        log_print (SYSTEM, "Failed divisibility test!\n");
-                        log_print (SYSTEM, "Column combination: ");
-                        print_perm (colcombs, ad->strength);
-                        log_print (SYSTEM, "N %d, product of s[j] is %d and %i %% %i != %i\n", ad->N, prod, ad->N,
-                                   prod, ad->N % prod);
-                        fflush (NULL);
+                if (N % prod != 0) {
                         ret = false;
                         break;
                 }
@@ -709,51 +741,14 @@ bool check_divisibility (const arraydata_t *ad) {
         return ret;
 }
 
-colindex_t **set_colcombs_fixed (int *&xlambda, int *&nvalues, int &ncolcombs, const array_t *s, const int strength,
-                                 const int fixedcol, const int N) {
-        log_print (DEBUG + 1, "set_colcombs_fixed: strength %d, fixedcol %d, N%d\n", strength, fixedcol, N);
-        register int i, j;
-        int prod;
-        colindex_t **colcombs = 0;
-
-        int n = fixedcol;
-        int k = strength - 1; // we keep 1 column fixed, choose k columns
-        ncolcombs = ncombs (n, k);
-
-        // printf("ncolcombs: %d, strength %d\n", ncolcombs, strength);
-        colcombs = malloc2d< colindex_t > (ncolcombs, strength);
-        xlambda = (int *)malloc (ncolcombs * sizeof (int));
-        nvalues = (int *)malloc (ncolcombs * sizeof (int));
-
-        log_print (DEBUG, "ncolcombs: %d\n", ncolcombs);
-
-        /* set last entry to fixed column */
-        for (i = 0; i < ncolcombs; i++)
-                colcombs[i][k] = fixedcol;
-
-        for (i = 0; i < k; i++) // set initial combination
-                colcombs[0][i] = i;
-
-        for (i = 1; i < ncolcombs; i++) {
-                memcpy (colcombs[i], colcombs[i - 1], k * sizeof (colindex_t));
-                next_combination< colindex_t > (colcombs[i], k, n);
-
-                prod = 1;
-                for (j = 0; j < strength; j++) {
-                        // myprintf("i %d j %d: %d\n", i, j, colcombs[i][j]);
-                        prod *= s[colcombs[i][j]];
-                }
-                nvalues[i] = prod;
-                xlambda[i] = N / prod;
-        }
-
-        prod = 1; // First lambda manually, because of copy-for-loop
-        for (i = 0; i < strength; i++)
-                prod *= s[colcombs[0][i]];
-        nvalues[0] = prod;
-        xlambda[0] = N / prod;
-
-        return colcombs;
+/***  Checks on the divisibility of the number of runs by the product of the levels in the factors for all t-tuples
+*
+* check_divisibility checks if the number of runs is a multiple of any combination of the number of factors.
+* The function only returns true or false, further alction should be done by the calling function.
+*
+* \param ad Specification of array class
+* \returns True if the structure satisfies the test
+**/
+bool check_divisibility(const arraydata_t *ad) {
+	return check_divisibility(ad->N, ad->ncols, ad->strength, ad->s);
 }
-
-// kate: indent-mode cstyle; indent-width 4; replace-tabs off; tab-width 4;

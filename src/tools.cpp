@@ -7,11 +7,6 @@
 #include <sys/timeb.h>
 #include <sys/types.h>
 
-#if defined(_MSC_VER)
-#pragma warning(disable : 4018)
-#pragma warning(disable : 4996)
-#endif
-
 #ifdef _WIN32
 #else
 #include <sys/time.h>
@@ -26,6 +21,27 @@ using namespace std;
 #include "tools.h"
 
 static nullStream staticNullStream;
+
+/// function to print debugging messages
+void printfd_handler (const char *file, const char *func, int line, const char *message, ...) {
+        std::string s = file;
+        s = base_name (s);
+
+        const char *fileshort = s.c_str ();
+        myprintf ("file %s: function %s: line %d: ", fileshort, func, line);
+#ifdef FULLPACKAGE
+        char buf[64 * 1024];
+
+        va_list va;
+        va_start (va, message);
+        // vprintf ( message, va );
+        vsprintf (buf, message, va);
+        va_end (va);
+        myprintf ("%s", buf);
+#else
+        myprintf ("printfd_handler not implemented");
+#endif
+}
 
 /** @brief Return string describing the system
  */
@@ -48,53 +64,31 @@ string system_uname () {
 #endif
 }
 
-/*!
-  Shows an array of x by y elements
-  \brief Shows array
-  \param array Pointer to OA
-  \param x Number of columns
-  \param y Number of rows
-  */
-void show_array (carray_t *array, const int x, const int y) {
-#ifdef FULLPACKAGE
-        write_array_format (stdout, array, y, x);
-#else
-        myprintf ("show_array: not implemented...\n");
-#endif
-}
+/*! Print an array to stdout
 
-/*!
-  Shows an array of r times c
-  \brief Shows array
-  \param array Pointer to OA
+\param array Pointer to OA
   \param r Number of rows
   \param c Number of columns
   */
-void print_array (const array_t *array, const rowindex_t r, const colindex_t c) {
-#ifdef FULLPACKAGE
-        write_array_format (cout, array, r, c);
-#else
-        myprintf ("print_array: not implemented...\n");
-#endif
+void print_array (const array_t *array, const rowindex_t nrows, const colindex_t ncols) {
+        write_array_format (stdout, array, nrows, ncols);
 }
 
-void print_array (const char *str, const array_t *array, const rowindex_t r, const colindex_t c) {
-        myprintf ("%s", str);
-        print_array (array, r, c);
-}
+/*! Print an array to stdout
 
-/*! @brief Print array, overloaded function */
-void print_array (const array_link &A) {
-#ifdef FULLPACKAGE
-        write_array_format (stdout, A.array, A.n_rows, A.n_columns);
-#else
-        myprintf ("print_array: not implemented...\n");
-#endif
+\param message String to print before the array
+\param array Pointer to OA
+\param r Number of rows
+\param c Number of columns
+*/
+void print_array (const char *message, const array_t *array, int nrows, int ncols) {
+        myprintf ("%s", message);
+        print_array (array, nrows, ncols);
 }
 
 /*!
   Gives next combination for k elements out of n based on an algorithm from wikipedia.
-  The generate is sorted.
+  The generation is sorted.
   \brief Gives next combination
   \param comb Pointer to combination
   \param k Number of the current combination
@@ -152,7 +146,7 @@ int next_comb_s (int *comb, int k, int n) {
  *
  * @return String
  */
-string oafilestring (rowindex_t rows, colindex_t cols, array_t *s) {
+string oafilestring (rowindex_t rows, colindex_t cols, const array_t *s) {
         string fname = "";
         fname += itos (rows);
 
@@ -231,24 +225,34 @@ void trim (std::string &str, const std::string &trimChars) {
         }
 }
 
-/* this integer determines to level of logging */
-static int streamloglvl = NORMAL;
+std::string currenttime () {
+        time_t seconds;
+        struct tm *tminfo;
+        time (&seconds);
+        tminfo = localtime (&seconds);
+        std::string ts = asctime (tminfo);
+        trim (ts);
+        return ts;
+}
 
-bool checkloglevel (int l) {
+/* this integer determines to level of logging */
+static int stream_logging_level = NORMAL;
+
+bool checkloglevel (int level) {
         bool b;
 #pragma omp critical
         {
-                b = l <= streamloglvl;
+                b = level <= stream_logging_level;
         }
         return b;
 }
 
-int getloglevel () { return streamloglvl; }
+int getloglevel () { return stream_logging_level; }
 
 void setloglevel (int n) {
 #pragma omp critical
-        { streamloglvl = n; }
-        log_print (-n, ""); // for log_print
+        { stream_logging_level = n; }
+        log_print (-n, ""); 
 }
 
 #ifdef FULLPACKAGE
@@ -260,7 +264,7 @@ void setloglevel (int n) {
  * @return
  */
 ostream &logstream (int level) {
-        if (level <= streamloglvl)
+        if (level <= stream_logging_level)
                 return std::cout;
         else {
                 // nullStream ns; return ns;
@@ -383,6 +387,15 @@ char path_separator () {
 #else
         return '/';
 #endif
+}
+
+void printdoubleasbits (double double_value, bool add_newline) {
+        unsigned char *desmond = (unsigned char *)&double_value;
+        for (size_t i = 0; i < sizeof (double); i++) {
+                myprintf ("%02X ", desmond[i]);
+        }
+        if (add_newline)
+			myprintf ("\n");
 }
 
 /// calculate directory name for job splitted into parts

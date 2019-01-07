@@ -808,47 +808,46 @@ std::vector< double > macwilliams_transform_mixed (const ndarray< double > &B, c
         return A;
 }
 
-#ifdef FULLPACKAGE
 /** Calculate D-efficiencies for all projection designs
  *
- * \param al Design to calculate D-efficiencies for
+ * \param orthogonal_array Design to calculate D-efficiencies for
  * \param number_of_factors Number of factors into which to project
  * \returns Vector with calculated D-efficiencies
  */
-std::vector< double > projDeff (const array_link &al, int number_of_factors, int verbose = 0) {
-        assert (al.is2level ());
+std::vector< double > projDeff (const array_link &orthogonal_array, int number_of_factors, int verbose) {
+        myassert (orthogonal_array.is2level (), "array is not 2-level");
 
-        int number_of_columns = al.n_columns;
-        std::vector< int > cp (number_of_factors);
+        int number_of_columns = orthogonal_array.n_columns;
+        std::vector< int > column_combination (number_of_factors);
         for (int i = 0; i < number_of_factors; i++)
-                cp[i] = i;
-        int64_t ncomb = ncombsm< int64_t > (number_of_columns, number_of_factors);
-
-        std::vector< double > dd (ncomb);
+                column_combination[i] = i;
+        int64_t number_combinations = ncombsm< int64_t > (number_of_columns, number_of_factors);
 
         int m = 1 + number_of_factors + number_of_factors * (number_of_factors - 1) / 2;
-        int N = al.n_rows;
+        int N = orthogonal_array.n_rows;
 
         if (verbose)
                 myprintf ("projDeff: k %d, kp %d: start with %ld combinations \n", number_of_columns,
-                          number_of_factors, (long)ncomb);
+                          number_of_factors, (long)number_combinations);
 
-        for (int64_t i = 0; i < ncomb; i++) {
+		std::vector< double > efficiencies(number_combinations);
+		for (int64_t i = 0; i < number_combinations; i++) {
                 if (m > N)
-                        dd[i] = 0;
+                        efficiencies[i] = 0;
                 else {
-                        array_link alsub = al.selectColumns (cp);
-                        dd[i] = alsub.Defficiency ();
+                        array_link alsub = orthogonal_array.selectColumns (column_combination);
+                        efficiencies[i] = alsub.Defficiency ();
                 }
                 if (verbose >= 2)
                         myprintf ("projDeff: k %d, kp %d: i %ld, D %f\n", number_of_columns, number_of_factors,
-                                  (long)i, dd[i]);
-                next_comb (cp, number_of_factors, number_of_columns);
+                                  (long)i, efficiencies[i]);
+                next_comb (column_combination, number_of_factors, number_of_columns);
         }
 
         if (verbose)
                 myprintf ("projDeff: k %d, kp %d: done\n", number_of_columns, number_of_factors);
 
+<<<<<<< HEAD
         return dd;
 <<<<<<< HEAD
 }
@@ -872,6 +871,9 @@ std::vector< double > PECsequence (const array_link &al, int verbose) {
                 return pec;
         }
 =======
+=======
+        return efficiencies;
+>>>>>>> pieter/dev
 }
 
 std::vector< double > PECsequence (const array_link &array, int verbose) {
@@ -1006,7 +1008,6 @@ std::vector< double > GWLPmixed (const array_link &al, int verbose, int truncate
 
 	return pec;
 }
-#endif
 
 void round_GWLP_zero_values(std::vector<double> &gma, int N)
 {
@@ -1314,7 +1315,6 @@ int arrayrankInfo (const array_link &al, int verbose) {
         return rank;
 }
 
-/* Helper functions for rankStructure */
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -1384,6 +1384,40 @@ double conditionNumber (const array_link &M) {
         Eigen::JacobiSVD< Eigen::Matrix< double, -1, -1 > > svd (A);
         double cond = svd.singularValues () (0) / svd.singularValues () (svd.singularValues ().size () - 1);
         return cond;
+}
+void rankStructure::info() const {
+	myprintf("	rankStructure: submatrix %dx%d, rank %d, rank of xf %d\n", alsub.n_rows,
+		alsub.n_columns, this->alsub.rank(), (int)decomp.rank());
+}
+
+/// update the structure cache with a new array
+void rankStructure::updateStructure(const array_link &al) {
+	this->alsub = al;
+	this->ks = al.n_columns;
+	Eigen::MatrixXd A = array2xf(al).getEigenMatrix();
+	decomp.compute(A);
+
+	this->Qi = decomp.matrixQ().inverse();
+
+	nupdate++;
+
+	if (this->verbose >= 1 && nupdate % 30 == 0) {
+		printfd("updateStructure: ncalc %d, nupdate %d\n", ncalc, nupdate);
+	}
+}
+
+/// calculate the rank of an array directly, uses special threshold
+int rankStructure::rankdirect(const Eigen::MatrixXd &A) const {
+	EigenDecomp decomp(A);
+	decomp.setThreshold(1e-12);
+	int rank = decomp.rank();
+	return rank;
+}
+
+/// calculate the rank of the second order interaction matrix of an array directly
+int rankStructure::rankxfdirect(const array_link &al) const {
+	Eigen::MatrixXd mymatrix = arraylink2eigen(array2xf(al));
+	return rankdirect(mymatrix);
 }
 
 /// calculate the rank of the second order interaction matrix of an array using the cache system
@@ -1580,7 +1614,6 @@ inline void array2eigenxf (const array_link &al, Eigen::MatrixXd &mymatrix) {
                                 mymatrix (r, ww) = (*p1 + *p2) % 2;
                                 p1++;
                                 p2++;
-                                // mymatrix ( r, ww ) = ( p1[r]+p2[r] ) %2;
                         }
                         ww++;
                 }
@@ -1593,29 +1626,30 @@ inline void array2eigenxf (const array_link &al, Eigen::MatrixXd &mymatrix) {
 
 array_link array2secondorder (const array_link &al) {
         int k = al.n_columns;
-        int n = al.n_rows;
+        int nrows = al.n_rows;
         int m = 1 + k + k * (k - 1) / 2;
         int m2 = k * (k - 1) / 2;
-        array_link out (n, m2, array_link::INDEX_DEFAULT);
+        array_link modelmatrix (nrows, m2, array_link::INDEX_DEFAULT);
 
         // init interactions
-        int ww = 0;
+        int output_column_idx = 0;
         for (int c = 0; c < k; ++c) {
-                int ci = c * n;
-                for (int c2 = 0; c2 < c; ++c2) {
-                        int ci2 = c2 * n;
+                int ci = c * nrows;
+				const array_t *p1 = al.array + ci;
+				for (int c2 = 0; c2 < c; ++c2) {
+                        int ci2 = c2 * nrows;
 
-                        const array_t *p1 = al.array + ci;
                         const array_t *p2 = al.array + ci2;
-                        array_t *pout = out.array + ww * out.n_rows;
+                        array_t *pout = modelmatrix.array + output_column_idx * modelmatrix.n_rows;
 
-                        for (int r = 0; r < n; ++r) {
+                        for (int r = 0; r < nrows; ++r) {
                                 pout[r] = (p1[r] + p2[r]) % 2;
                         }
-                        ww++;
+                        output_column_idx++;
                 }
         }
 
+<<<<<<< HEAD
 =======
 
 array_link array2secondorder (const array_link &al) {
@@ -1646,29 +1680,33 @@ array_link array2secondorder (const array_link &al) {
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         out *= 2;
         out -= 1;
+=======
+        modelmatrix *= 2;
+        modelmatrix -= 1;
+>>>>>>> pieter/dev
 
-        return out;
+        return modelmatrix;
 }
 
 array_link array2xf (const array_link &al) {
         const int k = al.n_columns;
-        const int n = al.n_rows;
+        const int nrows = al.n_rows;
         const int m = 1 + k + k * (k - 1) / 2;
 
-        array_link out (n, m, array_link::INDEX_DEFAULT);
+        array_link modelmatrix (nrows, m, array_link::INDEX_DEFAULT);
 
         // init first column
         int ww = 0;
-        for (int r = 0; r < n; ++r) {
-                out.array[r] = 1;
+        for (int r = 0; r < nrows; ++r) {
+                modelmatrix.array[r] = 1;
         }
 
         // init array
         ww = 1;
         for (int c = 0; c < k; ++c) {
-                int ci = c * n;
-                array_t *pout = out.array + (ww + c) * out.n_rows;
-                for (int r = 0; r < n; ++r) {
+                int ci = c * nrows;
+                array_t *pout = modelmatrix.array + (ww + c) * modelmatrix.n_rows;
+                for (int r = 0; r < nrows; ++r) {
                         pout[r] = 2 * al.array[r + ci] - 1;
                 }
         }
@@ -1676,45 +1714,139 @@ array_link array2xf (const array_link &al) {
         // init interactions
         ww = k + 1;
         for (int c = 0; c < k; ++c) {
-                int ci = c * n + n;
-                for (int c2 = 0; c2 < c; ++c2) {
-                        int ci2 = c2 * n + n;
+                int ci = c * nrows + nrows;
+				const array_t *p1 = modelmatrix.array + ci;
+				for (int c2 = 0; c2 < c; ++c2) {
+                        int ci2 = c2 * nrows + nrows;
 
-                        const array_t *p1 = out.array + ci;
-                        const array_t *p2 = out.array + ci2;
-                        array_t *pout = out.array + ww * out.n_rows;
+                        const array_t *p2 = modelmatrix.array + ci2;
+                        array_t *pout = modelmatrix.array + ww * modelmatrix.n_rows;
 
-                        for (int r = 0; r < n; ++r) {
+                        for (int r = 0; r < nrows; ++r) {
                                 pout[r] = -(p1[r] * p2[r]);
                         }
                         ww++;
                 }
         }
-        return out;
+        return modelmatrix;
+}
+
+int _model2idx(const std::string mode) {
+	if (mode == "c" || mode == "constant")
+		return 0;
+	else if (mode == "linear" || mode == "main")
+		return 1;
+	else if (mode == "i" || mode == "interaction")
+		return 2;
+	else if (mode == "q" || mode == "quadratic")
+		return 3;
+	else throw_runtime_exception(printfstring("mode %s is not valid for model matrix", mode.c_str()));
+
+	return -1;
+}
+
+array_link conference_design2modelmatrix(const array_link & conference_design, const char*mode, int verbose)
+{
+	std::vector<int> sizes = array2modelmatrix_sizes(conference_design);
+	int model_type_idx = _model2idx(mode);
+	const int n_columns = conference_design.n_columns;
+	const int n_rows = conference_design.n_rows;
+
+	array_link model_matrix(conference_design.n_rows, sizes[model_type_idx], array_link::INDEX_DEFAULT);
+	model_matrix.setconstant(1);
+
+	// main effects
+	if (model_type_idx >= 2) {
+		for (int column = 0; column < n_columns; column++) {
+			for (int row = 0; row < conference_design.n_rows; row++) {
+				model_matrix.at(row, column + sizes[0]) = conference_design.at(row, column);
+			}
+		}
+	}
+	// interactions
+	if (model_type_idx >= 2) {
+		int column_index = 0;
+		for (int column1 = 0; column1 < n_columns; column1++) {
+			for (int column2 = 0; column2 < column1; column2++) {
+				for (int row = 0; row < conference_design.n_rows; row++) {
+					model_matrix.atfast(row, column_index + sizes[1]) = conference_design.atfast(row, column1)*conference_design.atfast(row, column2);
+				}
+				column_index++;
+			}
+		}
+	}
+	if (model_type_idx == 3) {
+		// quadratics
+		for (int column = 0; column < n_columns; column++) {
+			for (int row = 0; row < conference_design.n_rows; row++) {
+				model_matrix.at(row, column + sizes[2]) = conference_design.at(row, column)*conference_design.at(row, column);
+			}
+		}
+	}
+	return model_matrix;
+}
+
+Eigen::MatrixXd array2modelmatrix(const array_link & array, const char*mode, int verbose)
+{
+	if (array.is_orthogonal_array()) {
+		const int n_columns = array.n_columns;
+		const int n_rows = array.n_rows;
+		std::vector<int> sizes = array2modelmatrix_sizes(array);
+		int model_type_idx = _model2idx(mode);
+
+		if (verbose)
+			myprintf("array2modelmatrix: type orthogonal array, model_type_idx %d\n", _model2idx(mode));
+
+		if (model_type_idx == 3)
+			throw_runtime_exception("quadratic mode not implemented");
+
+		MatrixFloat model_matrix = array.getModelMatrix(2, 1);
+		if (verbose>=2)
+			eigenInfo(model_matrix, "array2modelmatrix: model_matrix", 1);
+		model_matrix = model_matrix.block(0,0,n_rows, sizes[model_type_idx]);
+		return model_matrix;
+
+	}
+	if (array.is_conference()) {
+		if (verbose)
+			myprintf("array2modelmatrix: type conference, model_type_idx %d\n", _model2idx(mode));
+		array_link model_matrix = conference_design2modelmatrix(array, mode, verbose);
+		return model_matrix.getEigenMatrix();
+	}
+
+	throw_runtime_exception("no modelmatrix for array type");
+	return MatrixFloat();
+}
+
+std::vector<int> array2modelmatrix_sizes(const array_link & array)
+{
+    std::vector<int> modelmatrix_components_sizes = numberModelParams(array);
+
+	std::vector<int> modelmatrix_sizes(modelmatrix_components_sizes.size());
+	std::partial_sum(modelmatrix_components_sizes.begin(), modelmatrix_components_sizes.end(), modelmatrix_sizes.begin(), std::plus<int>());
+	return modelmatrix_sizes;
 }
 
 using namespace Eigen;
 
 #include <Eigen/LU>
 
-void DAEefficiencyWithSVD (const Eigen::MatrixXd &x, double &Deff, double &vif, double &Eeff, int &rank, int verbose) {
-        // printfd("start\n");
-
-        Eigen::FullPivLU< MatrixXd > lu_decomp (x);
+void DAEefficiencyWithSVD (const Eigen::MatrixXd &secondorder_interaction_matrix, double &Deff, double &vif, double &Eeff, int &rank, int verbose) {
+        Eigen::FullPivLU< MatrixXd > lu_decomp (secondorder_interaction_matrix);
         rank = lu_decomp.rank ();
 
-        JacobiSVD< Eigen::MatrixXd > svd (x);
+        JacobiSVD< Eigen::MatrixXd > svd (secondorder_interaction_matrix);
 
         const Eigen::VectorXd S = svd.singularValues ();
         int rank2 = svd.nonzeroSingularValues ();
         if (rank2 != rank) {
                 if (verbose >= 3) {
-                        myprintf ("ABwithSVD: rank calculations differ, unstable matrix: ranklu %d, ranksvd: %d\n",
+                        myprintf ("DAEefficiencyWithSVD: rank calculations differ, unstable matrix: ranklu %d, ranksvd: %d\n",
                                   rank, rank2);
                 }
         }
-        int m = x.cols ();
-        int N = x.rows ();
+        int m = secondorder_interaction_matrix.cols ();
+        int N = secondorder_interaction_matrix.rows ();
 
         if (m > N) {
                 Deff = 0;
@@ -1794,13 +1926,8 @@ void DAEefficiencyWithSVD (const Eigen::MatrixXd &x, double &Deff, double &vif, 
 #endif
                 return;
         }
-#ifdef FULLPACKAGE
-        if (verbose >= 3)
-                std::cout << "Its singular values are:" << std::endl << S << std::endl;
-#endif
 
         Eeff = S[m - 1] * S[m - 1] / N;
-        // cout << "Its singular values are:" << endl << S/sqrt(N) << endl;
 
         vif = 0;
         for (int i = 0; i < m; i++)
@@ -1815,7 +1942,7 @@ void DAEefficiencyWithSVD (const Eigen::MatrixXd &x, double &Deff, double &vif, 
                 myprintf ("ABwithSVD: Defficiency %.3f, Aefficiency %.3f (%.3f), Eefficiency %.3f\n", Deff, vif,
                           vif * m, Eeff);
 
-                Eigen::FullPivLU< MatrixXd > lu (x);
+                Eigen::FullPivLU< MatrixXd > lu (secondorder_interaction_matrix);
                 int ranklu = lu.rank ();
 
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
@@ -1824,7 +1951,7 @@ void DAEefficiencyWithSVD (const Eigen::MatrixXd &x, double &Deff, double &vif, 
         }
 }
 
-int array_rank_D_B (const array_link &al, std::vector< double > *ret, int verbose) {
+int array2rank_Deff_Beff (const array_link &al, std::vector< double > *return_values, int verbose) {
         int k = al.n_columns;
         int n = al.n_rows;
         int m = 1 + k + k * (k - 1) / 2;
@@ -1833,31 +1960,31 @@ int array_rank_D_B (const array_link &al, std::vector< double > *ret, int verbos
         array2eigenxf (al, mymatrix);
 
         double Deff;
-        double B;
+        double Beff;
         double Eeff;
         int rank;
 
-        DAEefficiencyWithSVD (mymatrix, Deff, B, Eeff, rank, verbose);
+        DAEefficiencyWithSVD (mymatrix, Deff, Beff, Eeff, rank, verbose);
 
-        if (ret != 0) {
-                ret->push_back (rank);
-                ret->push_back (Deff);
-                ret->push_back (B);
-                ret->push_back (Eeff);
+        if (return_values != 0) {
+                return_values->push_back (rank);
+                return_values->push_back (Deff);
+                return_values->push_back (Beff);
+                return_values->push_back (Eeff);
         }
         return rank;
 }
 
 std::vector< double > Aefficiencies (const array_link &al, int verbose) {
-        myassert (al.is2level ());
+        myassert (al.is2level (), "array is not 2-level");
         int N = al.n_rows;
         int k = al.n_columns;
         int m = 1 + k + (k * (k - 1)) / 2;
         if (verbose)
                 printf ("Aefficiencies: array %d, %d\n", N, k);
-        MatrixFloat X = array2eigenModelMatrix (al);
+        MatrixFloat modelmatrix = array2eigenModelMatrix (al);
 
-        Eigen::FullPivLU< MatrixXd > lu_decomp (X);
+        Eigen::FullPivLU< MatrixXd > lu_decomp (modelmatrix);
         int rank = lu_decomp.rank ();
         if (rank < m) {
                 if (verbose)
@@ -1872,10 +1999,11 @@ std::vector< double > Aefficiencies (const array_link &al, int verbose) {
         if (verbose)
                 printf ("Aefficiencies: calculate information matrix\n");
 
-        MatrixFloat matXtX = (X.transpose () * (X)) / N;
+        MatrixFloat information_matrix = (modelmatrix.transpose () * (modelmatrix)) / N;
 
         if (verbose)
                 printf ("Aefficiencies: invert information matrix\n");
+<<<<<<< HEAD
         MatrixFloat M = matXtX.inverse ();
 <<<<<<< HEAD
 
@@ -1891,6 +2019,9 @@ std::vector< double > Aefficiencies (const array_link &al, int verbose) {
         }
 
 =======
+=======
+        MatrixFloat M = information_matrix.inverse ();
+>>>>>>> pieter/dev
 
         std::vector< double > aa (3);
         double Ax = 0;
@@ -1915,13 +2046,13 @@ std::vector< double > Aefficiencies (const array_link &al, int verbose) {
 
 double VIFefficiency (const array_link &al, int verbose) {
         std::vector< double > ret;
-        array_rank_D_B (al, &ret, verbose);
+        array2rank_Deff_Beff (al, &ret, verbose);
         return ret[2];
 }
 
 double Aefficiency (const array_link &al, int verbose) {
         std::vector< double > ret;
-        array_rank_D_B (al, &ret, verbose);
+        array2rank_Deff_Beff (al, &ret, verbose);
         if (ret[2] == 0)
                 return 0;
         else
@@ -1930,7 +2061,7 @@ double Aefficiency (const array_link &al, int verbose) {
 
 double Eefficiency (const array_link &al, int verbose) {
         std::vector< double > ret;
-        int r = array_rank_D_B (al, &ret, verbose);
+        int r = array2rank_Deff_Beff (al, &ret, verbose);
         return ret[3];
 }
 
@@ -2036,7 +2167,7 @@ double detXtXfloat (const MyMatrixf &mymatrix, int verbose) {
 }
 
 // typedef Eigen::MatrixXd MyMatrix;
-typedef MatrixFloat MyMatrix;
+typedef MatrixFloat EigenMatrixFloat;
 
 std::vector< double > Defficiencies (const array_link &al, const arraydata_t &arrayclass, int verbose, int addDs0) {
         if ((al.n_rows > 500) || (al.n_columns > 500)) {
@@ -2046,11 +2177,10 @@ std::vector< double > Defficiencies (const array_link &al, const arraydata_t &ar
 
         int k = al.n_columns;
         int k1 = al.n_columns + 1;
-        int n = al.n_rows;
-        int N = n;
+        int nrows = al.n_rows;
         int m = 1 + k + k * (k - 1) / 2;
 
-        MyMatrix X;
+        EigenMatrixFloat X;
 
         int n2fi = -1; /// number of 2-factor interactions in contrast matrix
         int nme = -1;  /// number of main effects in contrast matrix
@@ -2064,24 +2194,24 @@ std::vector< double > Defficiencies (const array_link &al, const arraydata_t &ar
         } else {
                 if (verbose >= 2)
                         myprintf ("Defficiencies: mixed design!\n");
-                std::pair< MyMatrix, MyMatrix > mm = array2eigenModelMatrixMixed (al, 0);
-                const MyMatrix &X1 = mm.first;
-                const MyMatrix &X2 = mm.second;
-                X.resize (N, 1 + X1.cols () + X2.cols ());
-                X << MyMatrix::Constant (N, 1, 1), X1, X2;
+                std::pair< EigenMatrixFloat, EigenMatrixFloat > mm = array2eigenModelMatrixMixed (al, 0);
+                const EigenMatrixFloat &X1 = mm.first;
+                const EigenMatrixFloat &X2 = mm.second;
+                X.resize (nrows, 1 + X1.cols () + X2.cols ());
+                X << EigenMatrixFloat::Constant (nrows, 1, 1), X1, X2;
 
                 n2fi = X2.cols ();
                 nme = X1.cols ();
         }
-        MyMatrix matXtX = (X.transpose () * (X)) / n;
+        EigenMatrixFloat matXtX = (X.transpose () * (X)) / nrows;
 
         double f1 = matXtX.determinant ();
 
         int nm = 1 + nme + n2fi;
 
-        MyMatrix tmp (nm, 1 + n2fi); // tmp.resize ( nm, 1+n2fi);
+        EigenMatrixFloat tmp (nm, 1 + n2fi);
         tmp << matXtX.block (0, 0, nm, 1), matXtX.block (0, 1 + nme, nm, n2fi);
-        MyMatrix mX2i (1 + n2fi, 1 + n2fi); // X2i.resize ( 1+n2fi, 1+n2fi);
+        EigenMatrixFloat mX2i (1 + n2fi, 1 + n2fi); 
         mX2i << tmp.block (0, 0, 1, 1 + n2fi), tmp.block (1 + nme, 0, n2fi, 1 + n2fi);
 
         double f2i = (mX2i).determinant ();
@@ -2090,7 +2220,7 @@ std::vector< double > Defficiencies (const array_link &al, const arraydata_t &ar
         double D = 0, Ds = 0, D1 = 0;
         int rank = m;
         if (fabs (f1) < 1e-15) {
-                Eigen::FullPivLU< MyMatrix > lu_decomp (X);
+                Eigen::FullPivLU< EigenMatrixFloat > lu_decomp (X);
                 rank = lu_decomp.rank ();
 
                 if (verbose >= 1) {

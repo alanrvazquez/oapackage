@@ -6,8 +6,7 @@
  Copyright: See LICENSE.txt file that comes with this distribution
 */
 
-#ifndef MATHTOOLS_H
-#define MATHTOOLS_H
+#pragma once
 
 #include "printfheader.h"
 #ifdef FULLPACKAGE
@@ -114,8 +113,7 @@ class object_pool {
         }
         void Delete (TYPE *t) {
                 pool.push_back (t);
-                // if (pool.size() % 100000==0) myprintf("object_pool::Delete() stored object %zu\n", pool.size() );
-                if (verbose || 0) {
+                if (verbose) {
                         myprintf ("  object_pool::Delete() stored object %ld\n", (long)pool.size ());
                 }
         }
@@ -898,33 +896,13 @@ void seedfastrand (int s);
 // return random integer in range 0 to k-1
 int fastrandK (int k);
 
-#ifdef RPACKAGE
-// R packages are not allowed to use rand
-#define myrand fastrand
-#else
+
 /// set the random number seed using srand
 void set_srand (unsigned int s);
 #define myrand rand
-#endif
 
-#ifdef RPACKAGE
-template < typename myRandomAccessIterator >
-inline void my_random_shuffle (myRandomAccessIterator myfirst, myRandomAccessIterator mylast) {
-        // concept requirements
-        //__glibcxx_function_requires(_Mutable_RandomAccessIteratorConcept<
-        //  _RandomAccessIterator>)
-        //__glibcxx_requires_valid_range(__first, __last);
 
-        if (myfirst != mylast)
-                for (myRandomAccessIterator __i = myfirst + 1; __i != mylast; ++__i) {
-                        myRandomAccessIterator __j = myfirst + fastrand () % ((__i - myfirst) + 1);
-                        if (__i != __j)
-                                std::iter_swap (__i, __j);
-                }
-}
-#else
 #define my_random_shuffle std::random_shuffle
-#endif
 
 template < class permutationType > /* permtype should be a numeric type, i.e. int or long */
                                    /*
@@ -1364,6 +1342,7 @@ inline outtype init_perm_n (numtype *perm, int len) {
         return factorial< outtype > (len);
 }
 
+/// create a new permutation and initialize
 template < class numtype > numtype *new_perm_init (int len) {
         numtype *perm = new_perm< numtype > (len);
         init_perm (perm, len);
@@ -1381,8 +1360,6 @@ template < typename _ForwardIterator > inline bool issorted (_ForwardIterator fi
         return true;
 }
 
-/* templates for valueindex */
-
 template < class returntype, class basetype, class numtype >
 returntype *new_valueindex (const basetype *bases, const numtype n) {
         returntype *valueindex = new returntype[n * sizeof (returntype)];
@@ -1395,15 +1372,15 @@ returntype *new_valueindex (const basetype *bases, const numtype n) {
         return valueindex;
 }
 
-template < class numtype >
-numtype *init_valueindex_forward (numtype *valueindex, const numtype *bases, const numtype n) {
-        valueindex[0] = 1;
-
-        for (int i = 0; i < (n - 1); i++)
-                valueindex[i + 1] = valueindex[i] * bases[i];
-
-        return valueindex;
-}
+//template < class numtype >
+//numtype *init_valueindex_forward (numtype *valueindex, const numtype *bases, const numtype n) {
+//        valueindex[0] = 1;
+//
+//        for (int i = 0; i < (n - 1); i++)
+//                valueindex[i + 1] = valueindex[i] * bases[i];
+//
+//        return valueindex;
+//}
 
 template < class numtype > numtype *init_valueindex (numtype *valueindex, const numtype *bases, const numtype n) {
         valueindex[n - 1] = 1;
@@ -1599,7 +1576,6 @@ template < class numtype > std::vector< int > argsort (const std::vector< numtyp
 #include "InfInt.h"
 #endif
 
-#include <limits>
 
 /** @brief Class to describe the symmetry group of a list of elements
  *
@@ -1691,38 +1667,10 @@ class symmetry_group {
         }
 
         /// representation function (for python interface)
-        std::string __repr__ () const {
-                std::stringstream ss;
-                ss << "symmetry group: " << n << " elements, " << ngroups << " subgroups: ";
-                for (int i = 0; i < ngroups; i++)
-                        ss << gsize[i] << " ";
-
-                std::string s = ss.str ();
-                return s;
-        }
+		std::string __repr__() const;
 
         /// show the symmetry group
-        void show (int verbose = 1) const {
-                myprintf ("symmetry group: %d elements, %d subgroups: ", n, ngroups);
-                for (int i = 0; i < ngroups; i++)
-                        myprintf ("%d ", gsize[i]);
-                myprintf ("\n");
-
-                if (verbose >= 2) {
-                        myprintf ("gidx: ");
-                        for (int i = 0; i < n; i++)
-                                myprintf ("%d, ", gidx[i]);
-                        myprintf ("\n");
-                        myprintf ("gstart: ");
-                        for (int i = 0; i < ngroups; i++)
-                                myprintf ("%d, ", gstart[i]);
-                        myprintf ("\n");
-                        myprintf ("gsize: ");
-                        for (int i = 0; i < ngroups; i++)
-                                myprintf ("%d, ", gsize[i]);
-                        myprintf ("\n");
-                }
-        }
+		void show(int verbose = 1) const;
 };
 
 /** Class to walk over all elements of a symmetry group
@@ -1947,5 +1895,3 @@ double fraction_nonzero(std::vector < NumericType> data) {
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 }
 
-#endif
-// kate: indent-mode cstyle; indent-width 4; replace-tabs off; tab-width 4;

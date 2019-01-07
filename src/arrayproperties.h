@@ -5,8 +5,7 @@
  Copyright: See LICENSE.txt file that comes with this distribution
 */
 
-#ifndef ARRAYPROPERTIES_H
-#define ARRAYPROPERTIES_H
+#pragma once
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -19,7 +18,7 @@
 #define stringify(name) #name
 
 /// Calculate D-efficiency and VIF-efficiency and E-efficiency values using SVD
-void DAEefficiencyWithSVD (const Eigen::MatrixXd &x, double &Deff, double &vif, double &Eeff, int &rank, int verbose);
+void DAEefficiencyWithSVD (const Eigen::MatrixXd &secondorder_interaction_matrix, double &Deff, double &vif, double &Eeff, int &rank, int verbose);
 
 /** Calculate the rank of the second order interaction matrix of an orthogonal array
  *
@@ -28,7 +27,7 @@ void DAEefficiencyWithSVD (const Eigen::MatrixXd &x, double &Deff, double &vif, 
  *
  * The vector ret is filled with the rank, Defficiency, VIF efficiency and Eefficiency
  */
-int array_rank_D_B (const array_link &al, std::vector< double > *ret = 0, int verbose = 0);
+int array2rank_Deff_Beff (const array_link &al, std::vector< double > *ret = 0, int verbose = 0);
 
 /// Calculate D-efficiency for a 2-level array using symmetric eigenvalue decomposition
 double Defficiency (const array_link &al, int verbose = 0);
@@ -37,17 +36,18 @@ std::vector< double > Defficiencies (const array_link &al, const arraydata_t &ar
                                      int addDs0 = 0);
 
 /// Calculate VIF-efficiency of matrix
-double VIFefficiency (const array_link &al, int verbose = 0);
+double VIFefficiency (const array_link &orthogonal_array, int verbose = 0);
 
 /// Calculate A-efficiency of matrix
-double Aefficiency (const array_link &al, int verbose = 0);
+double Aefficiency (const array_link &orthogonal_array, int verbose = 0);
 
 /// Calculate E-efficiency of matrix (1 over the VIF-efficiency)
-double Eefficiency (const array_link &al, int verbose = 0);
+double Eefficiency (const array_link &orthogonal_array, int verbose = 0);
 
 /// calculate various A-efficiencies
-std::vector< double > Aefficiencies (const array_link &al, int verbose = 0);
+std::vector< double > Aefficiencies (const array_link &orthogonal_array, int verbose = 0);
 
+<<<<<<< HEAD
 #ifdef FULLPACKAGE
 /// Return the D-efficiencies for the projection designs
 std::vector< double > projDeff (const array_link &al, int kp, int verbose);
@@ -56,8 +56,18 @@ std::vector< double > projDeff (const array_link &al, int kp, int verbose);
 /// Return the projection estimation capacity sequence of a design
 std::vector< double > PECsequence (const array_link &al, int verbose = 0);
 =======
+=======
+/** Calculate D-efficiencies for all projection designs
+*
+* \param al Design to calculate D-efficiencies for
+* \param number_of_factors Number of factors into which to project
+* \param verbose Verbosity level
+* \returns Vector with calculated D-efficiencies
+*/
+std::vector< double > projDeff (const array_link &al, int number_of_factors, int verbose = 0);
+>>>>>>> pieter/dev
 
-/** Calculate the projection estimation capacity sequence for a design.
+/** Calculate the projection estimation capacity sequence for a design
 *
 * The PEC of a design is the fraction of estimable second-order models in x factors.
 * See "Ranking Non-regular Designs", J.L. Loeppky
@@ -70,18 +80,24 @@ std::vector< double > PECsequence (const array_link &al, int verbose = 0);
 *
 */
 std::vector< double > PICsequence(const array_link &array, int verbose = 0);
+<<<<<<< HEAD
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 #endif
+=======
+>>>>>>> pieter/dev
 
-/// Return the distance distribution of a design
-std::vector< double > distance_distribution (const array_link &al);
+/** Return the distance distribution of a design
+ *
+ * The distance distribution is described in "Generalized minimum aberration for asymmetrical fractional factorial designs", Wu and Xu, 2001
+ */
+std::vector< double > distance_distribution (const array_link &array);
 
 /// Calculate J-characteristics of matrix (the values are signed)
 std::vector< int > Jcharacteristics (const array_link &al, int jj = 4, int verbose = 0);
 
 /** @brief Calculate GWLP (generalized wordlength pattern)
  *
- *  The method used for calculation is from Xu and Wu (2001), "Generalized minimum aberration for asymmetrical
+ * The method used for calculation is from Xu and Wu (2001), "Generalized minimum aberration for asymmetrical
  * fractional factorial desings"
 <<<<<<< HEAD
  *  The non-symmetric arrays see "Algorithmic Construction of Efficient Fractional Factorial Designs With Large Run
@@ -160,6 +176,28 @@ array_link array2xf (const array_link &al);
 array_link array2xf (const array_link &array);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
+/**
+ *
+ * \param conference_design Conference design
+ * \param mode Can be 'm' for main effects, 'i' for interaction effects or 'q' for quadratic effects
+ * \param verbose Verbosity level
+ */
+array_link conference_design2modelmatrix(const array_link & conference_design, const char*mode, int verbose);
+
+/** Convert orthogonal array or conference design to model matrix
+ *
+ * Intercept, main effects, interaction effects, quadratics
+ * The order in the interaction effects is (c1, c2)=(0,0), (1,0), (2,0), (2,1), ... with c2<c1
+ *
+ * \param array Orthogonal array or conference design
+ * \param mode Can be 'm' for main effects, 'i' for interaction effects or 'q' for quadratic effects
+ * \param verbose Verbosity level
+ */
+Eigen::MatrixXd array2modelmatrix(const array_link &array, const char *mode, int verbose = 0);
+
+
+std::vector<int> array2modelmatrix_sizes(const array_link &array);
+
 /** calculate second order interaction model for 2-level array
 *
 * \param array Array to calculate second order interaction model from
@@ -192,22 +230,20 @@ int arrayrankFullPivLU (const array_link &al, double threshold = -1);
 int arrayrankSVD (const array_link &al, double threshold = -1);
 
 /// calculate the rank of an array
-int arrayrank (const array_link &al);
+int arrayrank (const array_link &array);
 
 /// Return rank of an array. Information about the different methods for rank calculation is printed to stdout
 int arrayrankInfo (const Eigen::MatrixXd &, int verbose = 1);
 
 /// Return rank of an array. Information about the different methods for rank calculation is printed to stdout
-int arrayrankInfo (const array_link &al, int verbose = 1);
+int arrayrankInfo (const array_link &array, int verbose = 1);
 
 /// convert array_link to Eigen matrix
-Eigen::MatrixXd arraylink2eigen (const array_link &al);
+Eigen::MatrixXd arraylink2eigen (const array_link &array);
 
-/** Structure to efficiently calculate the rank of the second order interaction matrix of many arrays sharing a common
- *subarray
+/** Structure to efficiently calculate the rank of the second order interaction matrix of many arrays
  *
- * The input arrays are assumed to be of the form A_i = [A_0 X_i]
- *
+ * The efficiency is obtained if the arrays share a common subarray. The theory is described in "Efficient rank calculation for matrices with a common submatrix", Eendebak, 2016
  *
  **/
 class rankStructure {
@@ -258,43 +294,17 @@ class rankStructure {
                 updateStructure (al);
         }
 
-        void info () const {
-                printf ("	rankStructure: submatrix %dx%d, rank %d, rank of xf %d\n", alsub.n_rows,
-                        alsub.n_columns, this->alsub.rank (), (int)decomp.rank ());
-        }
+		/// print information about the rank structure
+		void info() const;
 
         /// update the structure cache with a new array
-        void updateStructure (const array_link &al) {
-                this->alsub = al;
-                this->ks = al.n_columns;
-                Eigen::MatrixXd A = array2xf (al).getEigenMatrix ();
-                decomp.compute (A);
-
-                this->Qi = decomp.matrixQ ().inverse ();
-
-                nupdate++;
-
-                if (this->verbose >= 1 && nupdate % 30 == 0) {
-                        printfd ("updateStructure: ncalc %d, nupdate %d\n", ncalc, nupdate);
-                }
-        }
-
-        /// helper function
-        EigenDecomp::PermutationType matrixP () const { return decomp.colsPermutation (); }
+		void updateStructure(const array_link &al);
 
         /// calculate the rank of an array directly, uses special threshold
-        int rankdirect (const Eigen::MatrixXd &A) const {
-                EigenDecomp decomp (A);
-                decomp.setThreshold (1e-12);
-
-                if (0) {
-                        printf ("rankdirect: threshold: %e, rank %d\n", decomp.threshold (), (int)decomp.rank ());
-                }
-                int rank = decomp.rank ();
-                return rank;
-        }
+		int rankdirect(const Eigen::MatrixXd &array) const;
 
         /// calculate the rank of the second order interaction matrix of an array directly
+<<<<<<< HEAD
         int rankxfdirect (const array_link &al) const {
 <<<<<<< HEAD
                 Eigen::MatrixXd mymatrix = arraylink2eigen (array2xf (al)); // array2xf;
@@ -303,13 +313,16 @@ class rankStructure {
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
                 return rankdirect (mymatrix);
         }
+=======
+		int rankxfdirect(const array_link &array) const;
+>>>>>>> pieter/dev
 
         /// calculate the rank of the second order interaction matrix of an array using the cache system
-        int rankxf (const array_link &al);
+        int rankxf (const array_link &array);
 };
 
 /// Return the condition number of a matrix
-double conditionNumber (const array_link &M);
+double conditionNumber (const array_link &matrix);
 
 #ifdef FULLPACKAGE
 
@@ -362,7 +375,7 @@ template < class IndexType >
  * Valid for 2-level arrays of strength at least 3
  *
  * */
-inline typename Pareto< mvalue_t< long >, IndexType >::pValue calculateArrayParetoRankFA (const array_link &al,
+typename Pareto< mvalue_t< long >, IndexType >::pValue calculateArrayParetoRankFA (const array_link &al,
                                                                                           int verbose) {
         int N = al.n_rows;
         int model_rank = arrayrankFullPivLU (array2secondorder (al), 1e-12) + 1 +
@@ -440,19 +453,19 @@ inline void parseArrayPareto (const array_link &al, IndexType i, Pareto< mvalue_
 #endif // FULLPACKAGE
 
 /// convert C value to D-efficiency value
-inline double Cvalue2Dvalue (double C, int ka) {
-        double ma = 1 + ka + ka * (ka - 1) / 2;
-        double A = pow (C, 1. / ma);
+inline double Cvalue2Dvalue (double Cvalue, int number_of_columns) {
+        double ma = 1 + number_of_columns + number_of_columns * (number_of_columns - 1) / 2;
+        double Defficiency = pow (Cvalue, 1. / ma);
 
-        return A;
+        return Defficiency;
 }
 
 /// convert D-efficiency value to C value
-inline double Dvalue2Cvalue (double A, int ka) {
-        int ma = 1 + ka + ka * (ka - 1) / 2;
-        double C = pow (A, ma);
+inline double Dvalue2Cvalue (double Defficiency, int number_of_columns) {
+        int ma = 1 + number_of_columns + number_of_columns * (number_of_columns - 1) / 2;
+        double Cvalue = pow (Defficiency, ma);
 
-        return C;
+        return Cvalue;
 }
 
 <<<<<<< HEAD
@@ -468,5 +481,3 @@ inline int get_oaindex (const array_t *s, const colindex_t strength, const colin
         return oaindex;
 }
 
-#endif // ARRAYPROPERTIES_H
-// kate: indent-mode cstyle; indent-width 4; replace-tabs on; ;

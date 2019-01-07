@@ -17,7 +17,7 @@
 #include "tools.h"
 
 /**
- * @brief Read in files with arrays and join them into a single file
+ * @brief Read in files with arrays and print to stdout
  * @param argc
  * @param argv[]
  * @return
@@ -26,7 +26,7 @@ int main (int argc, char *argv[]) {
         AnyOption opt;
 
         /* parse command line options */
-        opt.setFlag ("help", 'h'); /* a flag (takes no argument), supporting long and short form */
+        opt.setFlag ("help", 'h'); 
         opt.setOption ("verbose", 'v');
         opt.setOption ("md5", 'm');
 
@@ -34,6 +34,7 @@ int main (int argc, char *argv[]) {
         opt.addUsage ("Usage: oacat [OPTIONS] [FILES]");
         opt.addUsage ("");
         opt.addUsage (" -h --help  			Prints this help ");
+        opt.addUsage (" -m --md5 [INT] 			If 1, then display md5 sum for each array. Default is 0.");
         opt.processCommandArgs (argc, argv);
 
         /* parse options */
@@ -58,7 +59,6 @@ int main (int argc, char *argv[]) {
                 arrayfile_t afile (opt.getArgv (i), 0);
 
                 if (afile.isopen ()) {
-                        //            std::cout << afile.showstr() << std::endl;
                         if (verbose)
                                 cout << "file " << opt.getArgv (i) << endl;
                         arraylist_t arraylist = readarrayfile (opt.getArgv (i), 0);
@@ -75,22 +75,21 @@ int main (int argc, char *argv[]) {
                         }
                 } else {
                         // try to read as binary data file
-                        int nr;
-                        int nc;
-                        bool valid = false;
+                        int number_rows;
+                        int number_columns;
+                        bool valid_binary_data = false;
                         FILE *fid = fopen (fname, "rb");
                         if (fid != 0) {
-                                // printf("fid %d\n", fid);
-                                valid = readbinheader (fid, nr, nc);
-                                if (valid) {
+                                valid_binary_data = readbinheader (fid, number_rows, number_columns);
+                                if (valid_binary_data) {
                                         if (verbose) {
-                                                printf ("data file %s: %d %d\n", fname, nr, nc);
+                                                printf ("data file %s: %d %d\n", fname, number_rows, number_columns);
                                         }
-                                        double *dd = new double[nc];
-                                        for (size_t r = 0; r < (size_t)nr; r++) {
-                                                fread (dd, sizeof (double), nc, fid);
-                                                for (size_t c = 0; c < (size_t)nc; c++) {
-                                                        printf ("%f ", dd[c]);
+                                        double *dd = new double[number_columns];
+                                        for (size_t r = 0; r < (size_t)number_rows; r++) {
+                                                fread (dd, sizeof (double), number_columns, fid);
+                                                for (size_t column = 0; column < (size_t)number_columns; column++) {
+                                                        printf ("%f ", dd[column]);
                                                 }
                                                 printf ("\n");
                                         }

@@ -110,8 +110,12 @@ int main (int argc, char *argv[]) {
         ad = readConfigFile (oaconfigfile);
 =======
 
+<<<<<<< HEAD
         arraydata_t *ad = readConfigFile (oaconfigfile);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+        arraydata_t *arrayclass = readConfigFile (oaconfigfile);
+>>>>>>> pieter/dev
 
         arraylist_t extensions;
         arraylist_t *arraylist2 = arraylist;
@@ -125,7 +129,7 @@ int main (int argc, char *argv[]) {
                 oaextend.init_column_previous = 0;
                 oaextend.checkarrays = 0;
 
-                extend_arraylist (*arraylist, *ad, oaextend, ecol, extensions);
+                extend_arraylist (*arraylist, *arrayclass, oaextend, ecol, extensions);
                 if (verbose)
                         printf ("  extended %d arrays to %d arrays\n", (int)arraylist->size (),
                                 (int)extensions.size ());
@@ -150,7 +154,7 @@ int main (int argc, char *argv[]) {
         writearrayfile (outfile.c_str (), &reduced_arrays, arrayfile::ABINARY);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
-        delete ad;
+        delete arrayclass;
         delete arraylist;
 
         logstream (QUIET) << "#time end: " << currenttime () << std::endl;

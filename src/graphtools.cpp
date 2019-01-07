@@ -297,7 +297,7 @@ std::pair< array_link, std::vector< int > > array2graph (const array_link &al, i
                                                          const arraydata_t &arrayclass) {
         int nrows = al.n_rows;
         int ncols = al.n_columns;
-        const std::vector< int > s = arrayclass.getS ();
+        const std::vector< int > s = arrayclass.factor_levels ();
 		
         int nRowVertices = nrows;
         int nColVertices = ncols;
@@ -316,10 +316,14 @@ std::pair< array_link, std::vector< int > > array2graph (const array_link &al, i
         std::vector< int > colors (nVertices);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         // printf("arrayclass.ncolgroups %d\n", arrayclass.ncolgroups);
 =======
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         symmetry_group sg (arrayclass.getS (), 0);
+=======
+        symmetry_group sg (arrayclass.factor_levels (), 0);
+>>>>>>> pieter/dev
 
         // row vertices: color 0
         for (int i = 0; i < nrows; i++)
@@ -576,7 +580,7 @@ array_transformation_t oagraph2transformation (const std::vector< int > &pp, con
                 myprintf ("\n");
         }
 
-        std::vector< int > s = arrayclass.getS ();
+        std::vector< int > s = arrayclass.factor_levels ();
 
         int ns = std::accumulate (s.begin (), s.end (), 0);
         array_transformation_t ttl (arrayclass);

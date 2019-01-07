@@ -8,8 +8,9 @@ setup.py file for OApackage
 from setuptools import setup, find_packages
 from setuptools import Extension
 from setuptools.command.test import test as TestCommand
-from distutils.command.build import build
-from setuptools.command.install import install
+from distutils.command.build import build as distutils_build
+from setuptools.command.install import install as setuptools_install
+import setuptools.command.build_ext 
 
 from codecs import open  # To use a consistent encoding
 from os import path
@@ -29,6 +30,8 @@ except ImportError:
 
 npinclude = np.get_include()
 setup_directory = path.abspath(path.dirname(__file__))
+
+is_python3 = sys.version_info >= (3, 4)
 
 # %%
 
@@ -122,7 +125,6 @@ try:
         """ Get SWIG executable """
         # stolen from https://github.com/FEniCS/ffc/blob/master/setup.py
 
-        # Find SWIG executable
         swig_executable = None
         swig_version = None
         swig_valid = False
@@ -139,12 +141,13 @@ try:
             print("Found SWIG: %s (version %s)" % (swig_executable, swig_version))
         return swig_executable, swig_version, swig_valid
     swig_executable, swig_version, swig_valid = get_swig_executable()
-    print('swig_version %s' % swig_version)
+    print('swig_version %s, swig_executable %s' % (swig_version, swig_executable) )
 except:
-    # fallback
-    swig_valid = True
+    def get_swig_executable():
+        return None, None, False
+    swig_valid = False
 
-#%% Hack to remove option for c++ code
+#%% Trick to remove option for c++ code compilation
 try:
     # see http://stackoverflow.com/questions/8106258/cc1plus-warning-command-line-option-wstrict-prototypes-is-valid-for-ada-c-o
     from setuptools.py31compat import get_config_vars
@@ -163,6 +166,7 @@ except:
 
 #%% Test suite
 
+""" Run a limited set of tests for the package """
 class OATest(TestCommand):
     user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
 
@@ -180,9 +184,11 @@ class OATest(TestCommand):
             pass
 
     def run_tests(self):
-        # import here, cause outside the eggs aren't loaded
         print('## oapackage test: load package')
+        # import here, cause outside the eggs aren't loaded
         import oapackage.tests
+        import oapackage.oahelper
+        import oapackage.scanf
         import oapackage.tests.test_oapackage
         print('## oapackage test: oalib version %s' % oapackage.version())
         print('## oapackage test: package compile options\n%s\n' % oapackage.oalib.compile_information())
@@ -286,13 +292,12 @@ else:
                                         '-Wno-return-type', '-Wno-unused-variable', '-Wno-unused-result', '-fPIC']
     oalib_module.extra_compile_args += ['-Wno-date-time', ]
 
-if platform.node() == 'marmot' or platform.node() == 'goffer' or platform.node() == 'pte':
+if platform.node() == 'marmot' or platform.node() == 'goffer' or platform.node() == 'woelmuis':
     # openmp version of code
     oalib_module.extra_compile_args += ['-fopenmp', '-DDOOPENMP']
     oalib_module.extra_link_args += ['-fopenmp']
 
 print('find_packages: %s' % find_packages())
-#print('swig_opts: %s' % str(swig_opts) )
 
 data_files = []
 scripts = ['misc/scripts/example_oapackage_python.py']
@@ -315,20 +320,25 @@ else:
     ext_modules = [oalib_module]
 
 # see: http://stackoverflow.com/questions/12491328/python-distutils-not-include-the-swig-generated-module
-class CustomBuild(build):
+class CustomBuild(distutils_build):
 
     def run(self):
         self.run_command('build_ext')
-        build.run(self)
+        distutils_build.run(self)
 
 
-class CustomInstall(install):
+class CustomInstall(setuptools_install):
 
     def run(self):
         self.run_command('build_ext')
-        install.run(self)
+        setuptools_install.run(self)
 
 
+class BuildExtSwig3(setuptools.command.build_ext.build_ext):
+    def find_swig(self):
+        swig_executable, _, _ = get_swig_executable()
+        return swig_executable
+    
 def readme():
     with open('README.md') as f:
         return f.read()
@@ -339,8 +349,13 @@ long_description = readme()
 version = get_version_info()[0]
 print('OApackage: version %s' % version)
 
+if is_python3:
+    python27_requirements = []
+else:
+    python27_requirements = ['mock; python_version <"3.0"', 'backports.functools_lru_cache;python_version<"2.9"']
+    
 setup(name='OApackage',
-      cmdclass={'test': OATest, 'install': CustomInstall, 'build': CustomBuild},
+      cmdclass={'test': OATest, 'install': CustomInstall, 'build': CustomBuild, 'build_ext': BuildExtSwig3},
       version=version,
       author="Pieter Eendebak",
       description="Package to generate and analyse orthogonal arrays and optimal designs",
@@ -355,11 +370,12 @@ setup(name='OApackage',
       packages=packages,
       data_files=data_files,
       scripts=scripts,
-      tests_require=['numpy', 'nose>=1.3', 'coverage>=4.0', 'mock'],
+      tests_require=['numpy', 'nose>=1.3', 'coverage>=4.0', 'mock' , 'python-dateutil']+python27_requirements,
       zip_safe=False,
-      install_requires=['numpy>=1.13', 'scanf'],
+      install_requires=['numpy>=1.13', 'python-dateutil'] + python27_requirements,
       extras_require={
           'GUI':  ["qtpy", 'matplotlib'],
+          'documentation': ['sphinx']
       },
       requires=['numpy', 'matplotlib'],
       classifiers=['Development Status :: 4 - Beta', 'Intended Audience :: Science/Research',

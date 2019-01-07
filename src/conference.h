@@ -1,6 +1,13 @@
 /** \file conference.h
 
- Author: Pieter Eendebak <pieter.eendebak@gmail.com>, (C) 2016
+Contains functionality to generate and analyse conference designs.
+
+For more information see:
+
+* https://en.wikipedia.org/wiki/Conference_matrix
+* "A Classification Criterion for Definitive Screening Designs", Schoen et al., The Annals of Statistics, 2018
+
+ Author: Pieter Eendebak <pieter.eendebak@gmail.com>, (C) 2018
 
  Copyright: See LICENSE.txt file that comes with this distribution
 */
@@ -15,6 +22,7 @@
 #include "graphtools.h"
 
 /// print a candidate extension
+<<<<<<< HEAD
 <<<<<<< HEAD
 inline void print_cperm (const cperm &c) {
         for (size_t i = 0; i < c.size (); i++) {
@@ -33,11 +41,15 @@ inline void print_cperm (const char *msg, const cperm &c) {
 =======
 void print_cperm(const conference_column &c, const char *msg = 0);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+void print_column(const conference_column &column, const char *msg = 0);
+>>>>>>> pieter/dev
 
 /** Show a list of candidate extensions
  *
- * \param cc List of candidates to show
+ * \param column_candidates List of candidates to show
  */
+<<<<<<< HEAD
 <<<<<<< HEAD
 void showCandidates (const std::vector< cperm > &cc);
 =======
@@ -46,6 +58,18 @@ void showCandidates (const std::vector< conference_column > &cc);
 /// convert conference design to definitive screening design
 array_link conference2DSD(const array_link &conf, bool add_zeros = 1);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+void showCandidates (const std::vector< conference_column > &column_candidates);
+
+/** Convert conference design to definitive screening design
+ *
+ * The DSD is created by appending the negated design to the conference design and then appending a row of zeros.
+ *
+ * \param conference_design Array with the conference design
+ * \param add_zeros If True, then append a row of zeros
+ */
+array_link conference2DSD(const array_link &conference_design, bool add_zeros = 1);
+>>>>>>> pieter/dev
 
 /// structure to cache a list of candidate extensions
 struct conf_candidates_t {
@@ -70,10 +94,13 @@ struct conf_candidates_t {
 /// Structure representing the type of conference designs
 class conference_t {
       public:
-        rowindex_t N;     /// number of runs
-        colindex_t ncols; /// total number of columns (factors) in the design
+		/// number of runs
+        rowindex_t N;     
+		/// total number of columns (factors) in the design
+        colindex_t ncols; 
 
         /// Type of conference design
+<<<<<<< HEAD
         enum conference_type { CONFERENCE_NORMAL, CONFERENCE_DIAGONAL, DCONFERENCE };
         conference_type ctype;      /// defines the type of designs
         matrix_isomorphism_t itype; /// defines the isomorphism type
@@ -95,6 +122,24 @@ class conference_t {
 
         bool j1zero; /// if true then J1 values should be zero
         bool j3zero; /// if true then J3 values should be zero
+=======
+        enum conference_type { 
+            /// normal conference design
+            CONFERENCE_NORMAL,
+            /// conference design with zeros only on diagonal
+            CONFERENCE_DIAGONAL,
+            /// double conference design
+            DCONFERENCE };
+		/// defines the type of designs
+		conference_type ctype;      
+		/// defines the isomorphism type
+        matrix_isomorphism_t itype; 
+
+		/// if true then J1 values should be zero
+        bool j1zero; 
+		/// if true then J3 values should be zero
+        bool j3zero; 
+>>>>>>> pieter/dev
 
       public:
         /// create new conference_t object
@@ -105,11 +150,15 @@ class conference_t {
         // return short string describing the class
         std::string idstr () const;
 
+<<<<<<< HEAD
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         /// create the unique representative of the 2 column design (for conference matrices)
+=======
+        /// create the unique representative of the 2 column conference design 
+>>>>>>> pieter/dev
         array_link create_root () const;
 
-        /// create the unique representative of the 3 column design
+        /// create the unique representative of the 3 column conference design
         array_link create_root_three () const;
 
         /// create the root arrays with 1 column for the double conference matrices
@@ -120,18 +169,27 @@ class conference_t {
 
         /// return string representation of the object
         std::string __repr__ () const {
-                return printfstring ("conference type: N %d, ncols %d", this->N, this->ncols);
+                return printfstring ("conference class: number of rows %d, number of columns %d", this->N, this->ncols);
         }
 };
 
-/// reduce conference matrix to normal form
+/** Reduce conference matrix to normal form using Nauty
+ *
+ * @see reduceConferenceTransformation
+ */
 array_link reduceConference (const array_link &, int verbose = 0);
 
-/// reduce conference matrix to normal form
-conference_transformation_t reduceConferenceTransformation (const array_link &al, int verbose);
-
-/** Helper structure containing extensions of conference designs
+/** Reduce conference matrix to normal form using Nauty
+ *
+ * The design is converted to a graph representation. The graph is then reduced using Nauty 
+ * to normal form and the resulting graph translated back to a conference design.
+ *
+ * \param conference_design Design to be reduced to normal form
+ * \param verbose Verbosity level
+ * \returns A transformation that converts the input design to normal form
+ *
  */
+<<<<<<< HEAD
 struct conference_extend_t {
 <<<<<<< HEAD
         std::vector< cperm > first;      /// list of first block candidate extensions
@@ -183,6 +241,9 @@ inline bool checkZeroPosition (const conference_column &p, int zero_position) {
         } else
                 return false;
 }
+=======
+conference_transformation_t reduceConferenceTransformation (const array_link &conference_design, int verbose);
+>>>>>>> pieter/dev
 
 /** Class to generate candidate extensions with caching
  *
@@ -219,16 +280,7 @@ class CandidateGeneratorBase {
         /** Show the candidate extensions for each column
          *
          */
-        void showCandidates (int verbose = 1) const {
-                myprintf ("CandidateGenerator: N %d\n", this->ct.N);
-                for (int i = 2; i <= last_valid; i++) {
-                        myprintf ("CandidateGenerator: number of candidates for %dth column: %ld\n", i,
-                                  (long)candidate_list[i].size ());
-                        if (verbose >= 2) {
-                                ::showCandidates (candidate_list[i]);
-                        }
-                }
-        }
+        void showCandidates (int verbose = 1) const;
 
         /// return all candidates for the kth column
 <<<<<<< HEAD
@@ -311,25 +363,21 @@ class CandidateGeneratorDouble : public CandidateGeneratorBase {
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 };
 
-/** Extend a single conference design with candidate columns */
-conference_extend_t extend_conference_matrix (const array_link &al, const conference_t &ct, int extcol,
-                                              int verbose = 1, int maxzpos = -1);
-
 /** Extend a list of conference designs with a single column.
  *
  */
-arraylist_t extend_conference (const arraylist_t &lst, const conference_t ctype, int verbose,
+arraylist_t extend_conference (const arraylist_t &lst, const conference_t conference_type, int verbose,
                                int select_isomorphism_classes = 0);
 
 /// plain version without caching
-arraylist_t extend_conference_plain (const arraylist_t &lst, const conference_t ctype, int verbose,
+arraylist_t extend_conference_plain (const arraylist_t &lst, const conference_t conference_type, int verbose,
                                      int select_isomorphism_classes = 0);
 
 /** Extend a list of conference designs with a single column */
-arraylist_t extend_conference_restricted (const arraylist_t &lst, const conference_t ctype, int verbose);
+arraylist_t extend_conference_restricted (const arraylist_t &lst, const conference_t conference_type, int verbose);
 
-// extend a list of double conference matrices
-arraylist_t extend_double_conference (const arraylist_t &lst, const conference_t ctype, int verbose);
+// extend a list of double conference matrices with an additional column
+arraylist_t extend_double_conference (const arraylist_t &lst, const conference_t conference_type, int verbose);
 
 /// select representatives for the isomorphism classes of a list of conference arrays
 arraylist_t selectConferenceIsomorpismClasses (const arraylist_t &list, int verbose,
@@ -347,7 +395,7 @@ arraylist_t selectLMC0 (const arraylist_t &list, int verbose, const conference_t
 
 /** Generate candidate extensions (wrapper function)
  *
- * \param al Design to be extended
+ * \param array Design to be extended
  * \param conference_type Class of conference designs
  * \param zero_index index of zero in candidate column
  * \param verbose Verbosity level
@@ -355,10 +403,14 @@ arraylist_t selectLMC0 (const arraylist_t &list, int verbose, const conference_t
  * \param filterj2 If True, filter based on J2 values
  */
 <<<<<<< HEAD
+<<<<<<< HEAD
 std::vector< cperm > generateConferenceExtensions (const array_link &al, const conference_t &conference_type,
 =======
 std::vector< conference_column > generateConferenceExtensions (const array_link &al, const conference_t &conference_type,
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+std::vector< conference_column > generateConferenceExtensions (const array_link &array, const conference_t &conference_type,
+>>>>>>> pieter/dev
                                                    int zero_index, int verbose = 1, int filtersymm = 1,
                                                    int filterj2 = 1);
 
@@ -400,7 +452,7 @@ int maxz (const array_link &al, int column_index = -1);
  */
 bool compareLMC0 (const array_link &alL, const array_link &alR);
 
-/// sort list of arrays according to LMC-0 ordering
+/// sort list of conference designs according to LMC-0 ordering
 arraylist_t sortLMC0 (const arraylist_t &lst);
 
 /// LMC0 check for double conference matrix
@@ -412,12 +464,24 @@ lmc_t LMC0check (const array_link &al, int verbose = 0);
 /// return true if the design is a foldover array
 bool isConferenceFoldover (const array_link &al, int verbose = 0);
 
+<<<<<<< HEAD
 // return true if the extension column satisfies the inner product check
 <<<<<<< HEAD
 int ipcheck (const cperm &col, const array_link &al, int cstart = 2, int verbose = 0);
 =======
 int ipcheck (const conference_column &col, const array_link &al, int cstart = 2, int verbose = 0);
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+/** For a double conference design return a row permutation to a single conference design
+ * 
+ * If the design is not a foldover design then the first element of the returned permutation is -1.
+ * 
+ * \param double_conference A double conference design
+ * \returns Permutation
+ * 
+ */
+std::vector<int> double_conference_foldover_permutation(const array_link &double_conference);
+>>>>>>> pieter/dev
 
 /// return minimal position of zero in design
 int minz (const array_link &al, int column_index);
@@ -438,8 +502,7 @@ class DconferenceFilter {
         /// filter based on first occurence of zero in a column
         int filterzero;
 
-
-        mutable long ngood;
+		mutable long ngood;
 
       private:
         /// table of J2 vectors for J3 filter
@@ -457,46 +520,12 @@ class DconferenceFilter {
         symmdata sd;
 
       public:
-        DconferenceFilter (const array_link &_als, int filtersymm_, int filterj2_, int filterj3_ = 1)
-            : als (_als), filtersymm (filtersymm_), filterj2 (filterj2_), filterj3 (filterj3_), filterfirst (0),
-              filterzero (0), ngood (0), sd (als) {
-
-                check_indices = sd.checkIdx ();
-                dtable = createJ2tableConference (als);
-
-                if (als.n_columns >= 2) {
-                        inline_dtable = als.selectColumns (0) - als.selectColumns (1);
-                        inline_dtable = hstack (inline_dtable, als.selectColumns (0) + 1);
-                        inline_dtable = hstack (inline_dtable, als.selectColumns (0) * als.selectColumns (0) - 1);
-                        inline_dtable = hstack (inline_dtable, als.selectColumns (1) * als.selectColumns (1) - 1);
-
-                        minzvalue = minz (als, als.n_columns - 1);
-
-                        inline_row = als.n_rows;
-                        int br = 0;
-                        for (int i = als.n_rows - 1; i >= 0; i--) {
-                                for (int c = 0; c < als.n_columns; c++) {
-                                        if (inline_dtable.at (i, 0) != 0) {
-                                                br = 1;
-                                                break;
-                                        }
-                                }
-                                if (br) {
-                                        break;
-                                }
-                                inline_row = i;
-                        }
-                } else {
-                        inline_row = -1;
-                }
-        }
+		  DconferenceFilter(const array_link &_als, int filtersymm_, int filterj2_, int filterj3_ = 1);
 
         /// print object to stdout
-        void show () const {
-                myprintf ("DconferenceFilter: filterj1 -, filterj2 %d, filterj3 %d, filtersymm %d\n", filterj2,
-                          filterj3, filtersymm);
-        }
+		void show() const;
 
+<<<<<<< HEAD
         /// filter a list of cperms using the filter method
 <<<<<<< HEAD
         std::vector< cperm > filterList (const std::vector< cperm > &lst, int verbose = 0) const {
@@ -552,13 +581,25 @@ class DconferenceFilter {
 <<<<<<< HEAD
         bool filter (const cperm &c) const;
 =======
+=======
+        /// filter a list of columns using the filter method
+		std::vector< conference_column > filterList(const std::vector< conference_column > &lst, int verbose = 0) const;
+
+		std::vector< conference_column > filterListJ2last(const std::vector< conference_column > &column_list) const;
+
+        /// filter a list of cperms using the filterZero method
+		std::vector< conference_column > filterListZero(const std::vector< conference_column > &lst) const;
+
+        /// return True if the extension satisfies all checks
+>>>>>>> pieter/dev
         bool filter (const conference_column &c) const;
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 
         /** filter on partial column (only last col)
          *
-         * r (int): the number of rows that are valid
+         * maxrow (int): the number of rows that are valid
          **/
+<<<<<<< HEAD
 <<<<<<< HEAD
         bool filterJpartial (const cperm &c, int r) const;
 
@@ -625,20 +666,20 @@ class DconferenceFilter {
                 int jv = 0;
                 for (int idx1 = 0; idx1 < nc; idx1++) {
                         jv = 0;
+=======
+        bool filterJpartial (const conference_column &c, int maxrow) const;
 
-                        const array_t *o1 = dtable.array + dtable.n_rows * idx1;
-                        for (int xr = 0; xr < N; xr++) {
+        /// return True if the extension satisfies all J-characteristic checks
+		bool filterJ(const conference_column &column, int j2start = 0) const;
+>>>>>>> pieter/dev
 
-                                jv += (o1[xr]) * (c[xr]);
-                        }
+        /// return True if the extension satisfies all J-characteristic checks for the last columns
+		bool filterJlast(const conference_column &c, int j2start = 0) const;
 
-                        if (jv != 0) {
-                                return false;
-                        }
-                }
-                return true;
-        }
+        /// return True if the extension satisfies all checks. prints the reason for returning True or False to stdout
+        bool filterReason (const conference_column &column) const;
 
+<<<<<<< HEAD
         /// return True of the candidate satisfies the J3 check for specified pairs
 <<<<<<< HEAD
         bool filterJ3s (const cperm &c, int idxstart) const {
@@ -730,10 +771,28 @@ class DconferenceFilter {
         /// against
         bool filterJ2last (const conference_column &c) const { return ipcheck (c, als, als.n_columns - 1); }
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+        /// return True if the candidate satisfies the J3 check
+		bool filterJ3(const conference_column &column) const;
+
+        /// return True if the candidate satisfies the J3 check for specified pairs
+		bool filterJ3s(const conference_column &column, int idxstart) const;
+        /// return True if the candidate satisfies the J3 check
+		bool filterJ3inline(const conference_column &column) const;
+
+        /// return True of the candidate satisfies the symmetry check
+        bool filterSymmetry (const conference_column &column) const;
+
+        /// return True of the candidate extension satisfies the J2 check
+        bool filterJ2 (const conference_column &c) const;
+        /// return True of the candidate extension satisfies the J2 check for the last column of the array checked against
+        bool filterJ2last (const conference_column &c) const;
+>>>>>>> pieter/dev
         /** return True of the candidate extension satisfies the zero check
          *
          * This means that the first entries of the extension do not contain a zero.
          */
+<<<<<<< HEAD
 <<<<<<< HEAD
         bool filterZero (const cperm &c) const {
 =======
@@ -746,8 +805,10 @@ class DconferenceFilter {
                 }
                 return true;
         }
+=======
+		bool filterZero(const conference_column &c) const;
+>>>>>>> pieter/dev
 
-      private:
 };
 
 /** Inflate a candidate column
@@ -767,4 +828,3 @@ std::vector< conference_column > inflateCandidateExtension (const conference_col
                                                 const symmetry_group &alsg, const std::vector< int > &check_indices,
                                                 const conference_t &ct, int verbose, const DconferenceFilter &filter);
 
-// kate: indent-mode cstyle; indent-width 4; replace-tabs on; ;

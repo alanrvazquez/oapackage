@@ -59,8 +59,7 @@ std::vector< int > dextend_t::filterArrays (const array_link &al, const arraylis
         array_link tmparray (al.n_rows, al.n_columns + 1, -1);
         std::copy (al.array, al.array + al.n_columns * al.n_rows, tmparray.array);
 
-        cprintf (verbose >= 3, "dextend_t::filterArrays: filtering fraction %.3f: %d/%d\n", double(ngoodcombined) / nn,
-                 ngoodcombined, nn);
+	cprintf (verbose >= 3, "dextend_t::filterArrays: filtering fraction %.3f: %d/%d\n", double(ngoodcombined) / nn, ngoodcombined, nn);
         flush_stdout ();
         const int lastcolx = al.n_columns;
 
@@ -105,6 +104,62 @@ void dextend_t::DefficiencyFilter (double Dfinal, int k, int kfinal, double Lmax
                 dextend.filter[ii] = chk;
         }
 }
+
+/*!  \brief Branche Information for extension algorithm
+*
+* This struct is used to keep track of the branches of different possibilities. If more than one option is available,
+* this location should be stored at st[count] and count should be increased. For short, this could be done by
+* st[count++]. If a column if filled, the highest element in use, gives the last branching point. Struct is used to
+* represent a stack, since no random access is needed.
+*/
+struct split {
+	///	Pointer to the stack
+	rowindex_t *st; // alternative for a stack object
+					///	Counter for number of elements on the stack and the number of options at the last spot, is obsolete?
+	rowindex_t count;
+	/// size of stack
+	rowindex_t stacksize;
+
+	/// number of valid positions
+	array_t *nvalid;
+	array_t *cvalidpos;
+	///  valid positions
+	array_t **valid;
+
+	/**
+	* @brief Constructor for stack structure
+	* @param stacksize
+	* @param maxs Maximum value in array
+	*/
+	split(rowindex_t stacksize, int maxs = 26) {
+		log_print(DEBUG + 1, "split constructor: size %d\n", stacksize);
+		this->stacksize = stacksize;
+		this->st = new rowindex_t[stacksize];
+		this->nvalid = new array_t[stacksize];
+		this->cvalidpos = new array_t[stacksize];
+		this->valid = malloc2d< array_t >(stacksize, maxs + 1);
+		this->count = 0; // initialize stack
+	}
+
+	~split() {
+		delete[] this->st;
+		delete[] this->nvalid;
+		delete[] this->cvalidpos;
+		free2d(this->valid); //, this->stacksize);
+	}
+
+	inline rowindex_t position() { return this->count - 1; };
+
+	/// show information about stack
+	void show() {
+		myprintf("stack: %d elements\n", this->count);
+		for (int i = 0; i < this->count; i++) {
+			myprintf("row %d (pos %d): ", this->st[i], this->cvalidpos[i]);
+			print_perm(this->valid[i], this->nvalid[i]);
+		}
+	}
+};
+
 void OAextend::updateArraydata (arraydata_t *ad) const {
         if (ad == 0)
                 return;
@@ -122,7 +177,7 @@ void OAextend::updateArraydata (arraydata_t *ad) const {
                 ad->order = ORDER_J5;
                 break;
         case MODE_J5ORDERX:
-        case MODE_J5ORDERXFAST:
+        case MODE_J5ORDER_2LEVEL:
                 ad->order = ORDER_J5;
                 ad->order = ORDER_LEX;
                 break;
@@ -139,7 +194,7 @@ std::string OAextend::__repr__ () const {
         s += printfstring ("OAextend: singleExtendTime %.1f [s], nLMC %d", singleExtendTime, nLMC) + split;
         s += printfstring ("OAextend: init_column_previous %d", init_column_previous) + split;
         s += printfstring ("OAextend: algorithm %s", this->getAlgorithmName ().c_str ()) + split;
-        if (this->algmode == MODE_J5ORDERX || this->algmode == MODE_J5ORDERXFAST) {
+        if (this->algmode == MODE_J5ORDERX || this->algmode == MODE_J5ORDER_2LEVEL) {
                 s += printfstring ("OAextend: special: j5structure %d", this->j5structure) + split;
         }
         return s;
@@ -155,13 +210,22 @@ void OAextend::setAlgorithmAuto (arraydata_t *ad) {
         this->setAlgorithm (x, ad);
 }
 
+void OAextend::info(int verbose) const {
+	std::cout << __repr__();
+
+	if (verbose > 1) {
+		myprintf("OAextend: use_row_symmetry: %d\n", this->use_row_symmetry);
+	}
+	std::cout << std::endl;
+}
+
 void OAextend::setAlgorithm (algorithm_t algorithm, arraydata_t *ad) {
         this->algmode = algorithm;
 
         switch (this->algmode) {
         case MODE_J5ORDER:
         case MODE_J5ORDERX:
-        case MODE_J5ORDERXFAST:
+        case MODE_J5ORDER_2LEVEL:
                 init_column_previous = INITCOLUMN_J5;
                 j5structure = J5_45;
                 break;
@@ -491,6 +555,12 @@ int *init_column (array_t *array, extendpos *p, int *col_offset, split *&stack) 
         return elements;
 }
 
+/** @brief Copy the frequency count table
+*/
+inline void copy_freq_table(strength_freq_table source, strength_freq_table target, int ftsize) {
+	memcpy((void *)target[0], (void *)source[0], ftsize * sizeof(int));
+}
+
 /**
  * @brief Initialize extension with column
  * @param array
@@ -546,7 +616,6 @@ void init_column_previous (array_t *array, extendpos *p, int &col_offset, split 
         for (int j = 1; j < N; j++) {
                 p->row = j;
                 get_range (array, p, es, oaextend.use_row_symmetry);
-// printf("init_column_previous: countelements: p->row %d, maxval %d\n", p->row, p->ad->s[p->col]);
 #ifdef COUNTELEMENTCHECK
                 countelements (&array[col_offset], p->row, p->ad->s[p->col], es->elements);
 #endif
@@ -602,17 +671,49 @@ double progress_column (array_t *A, extendpos *p) {
         return 0;
 }
 
+/** @brief Predict j4(1,2,3,k) using the theorem from Deng
+* This works only for 2-level arrays. The 0 corresponds to a +
+*
+*/
+inline int predictJ(const array_t *array, const int N, const int k) {
+	int t = N / 4;
+	int tt = t / 2;
+
+	int number_of_plus_values = 0;
+	for (int i = 0; i < tt; i++) {
+		if (array[k * N + i] == 0) {
+			number_of_plus_values++;
+		}
+	}
+	for (int i = tt; i < t; i++) {
+		if (array[k * N + i] == 1) {
+			number_of_plus_values++;
+		}
+	}
+
+	return 8 * number_of_plus_values - N;
+}
+
 /// perform Jcheck, return 1 if branch should be cut
 int Jcheck (carray_t *array, const rowindex_t N, const int jmax, const extendpos *p) {
         if (p->row == N / 4 + 1) {
                 int Jpred = predictJ (array, N, p->col);
                 if (abs (Jpred) > abs (jmax)) {
                         logstream (NORMAL) << printfstring ("   cutting branch jpred %d, jmax %d!\n", Jpred, jmax);
-                        // return to stack
                         return 1;
                 }
         }
         return 0;
+}
+
+/// return string with current time
+inline std::string printtime() {
+	time_t rawtime;
+	struct tm *timeinfo;
+
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	return printfstring("%s", asctime(timeinfo));
 }
 
 /**
@@ -719,7 +820,7 @@ int extend_array (carray_t *origarray, const arraydata_t *fullad, const colindex
 
 #ifdef FREQELEM
         /* set elem frequencies */
-        init_frequencies (es, array);
+        es->init_frequencies (array);
 #endif
 
         /* check whether we are in the same column group */
@@ -797,19 +898,6 @@ int extend_array (carray_t *origarray, const arraydata_t *fullad, const colindex
                                                 logstream (DEBUG) << "cutbranch: no more branches" << endl;
                                                 break;
                                         }
-                                }
-                        }
-#endif
-
-#ifdef JCHECK
-                        int jc = Jcheck (array, N, jmax, p);
-                        if (jc) {
-                                more_branches = return_stack (stack, p, array, col_offset);
-                                if (more_branches)
-                                        continue;
-                                else {
-                                        logstream (QUIET) << "cutbranch: no more branches" << endl;
-                                        break;
                                 }
                         }
 #endif
@@ -961,7 +1049,6 @@ arraylist_t extend_arraylist (const arraylist_t &alist, const arraydata_t &array
         return extend_arraylist (alist, atmp, oaextend);
 }
 
-//%newobject extend_arraylist;
 arraylist_t extend_arraylist (const arraylist_t &alist, arraydata_t &fullad, OAextend const &oaextend) {
         colindex_t extensioncol = -1;
 
@@ -991,22 +1078,22 @@ int extend_arraylist (const arraylist_t &alist, arraydata_t &fullad, OAextend co
         return n;
 }
 
-arraylist_t runExtendRoot (arraydata_t adata, int nmax, int verbose) {
+arraylist_t runExtendRoot (arraydata_t arrayclass, int max_number_columns, int verbose) {
 
-        array_link al = adata.create_root ();
+        array_link al = arrayclass.create_root ();
         OAextend oaoptions;
-        oaoptions.setAlgorithmAuto (&adata);
+        oaoptions.setAlgorithmAuto (&arrayclass);
 
-        arraylist_t sols;
-        sols.push_back (al);
+        arraylist_t solutions;
+        solutions.push_back (al);
 
-        for (int ii = adata.strength; ii < nmax; ii++) {
-                arraylist_t solsx;
-                extend_arraylist (sols, adata, oaoptions, ii, solsx);
+        for (int ii = arrayclass.strength; ii < max_number_columns; ii++) {
+                arraylist_t extensions;
+                extend_arraylist (solutions, arrayclass, oaoptions, ii, extensions);
                 if (verbose) {
-                        myprintf ("runExtend: ncols %d: %ld arrays\n", ii + 1, (long)solsx.size ());
+                        myprintf ("runExtend: ncols %d: %ld arrays\n", ii + 1, (long)extensions.size ());
                 }
-                sols = solsx;
+                solutions = extensions;
         }
-        return sols;
+        return solutions;
 }

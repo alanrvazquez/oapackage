@@ -1,6 +1,5 @@
 #include <sstream>
 #include <string>
-
 #include <algorithm>
 
 #include "arraytools.h"
@@ -9,10 +8,8 @@
 #include "mathtools.h"
 #include "strength.h"
 #include "tools.h"
+#include <errno.h>
 
-#ifdef RPACKAGE
-#define printf notallowed
-#endif
 
 #ifdef FULLPACKAGE
 #include "bitarray/bit_array.h"
@@ -697,6 +694,37 @@ void array_transformation_t::apply (array_t *sourcetarget) const {
         destroy_array (tmp);
 }
 
+/** @brief Perform a row permutation
+*
+* @param source Source array
+* @param target Target array
+* @param perm Permutation to perform
+* @param nrows Number of rows
+* @param ncols Numer of columns
+*/
+inline void perform_inv_row_permutation (const array_t *source, array_t *target, rowperm_t perm, int nrows,
+                                         int ncols) {
+        for (int i = 0; i < ncols; i++)
+                for (int j = 0; j < nrows; j++) {
+                        target[nrows * i + j] = source[nrows * i + perm[j]];
+                }
+}
+
+/** @brief Perform inverse column permutation on an array
+ *
+ * @param source
+ * @param target
+ * @param perm
+ * @param nrows
+ * @param ncols
+ */
+inline void perform_inv_column_permutation (const array_t *source, array_t *target, colperm_t perm, int nrows,
+                                            int ncols) {
+        for (int i = 0; i < ncols; i++) {
+                memcpy (&target[i * nrows], &source[perm[i] * nrows], nrows * sizeof (array_t));
+        }
+}
+
 void array_transformation_t::apply (const array_t *source, array_t *target) const {
 
         array_t *tmp = create_array (ad);
@@ -790,7 +818,7 @@ void get_factors (array_t *s, carray_t *array, const rowindex_t N, const colinde
 arraydata_t arraylink2arraydata (const array_link &al, int extracols, int strength) {
         int verbose = 0;
 
-        if(al.min()<0) {
+        if(al.min() < 0) {
          throw_runtime_exception("array should have positive integer values to convert to arraydata_t structure");    
         }
         // create arraydatya
@@ -886,7 +914,20 @@ void foldtest (jstruct_t &js, const array_link &al, int jj, int verbose) {
         delete_comb (pp);
 }
 
+<<<<<<< HEAD
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+arraylist_t addConstant (const arraylist_t &lst, int value) {
+        arraylist_t output_arrays (lst.size ());
+
+        for (size_t i = 0; i < lst.size (); i++) {
+                output_arrays[i] = lst[i] + value;
+        }
+
+        return output_arrays;
+}
+
+>>>>>>> pieter/dev
 /** Return number of arrays with j_{2n+1}=0 for n<m */
 std::vector< int > getJcounts (arraylist_t *arraylist, int N, int k, int verbose) {
         std::vector< int > aa (k + 1);
@@ -1014,9 +1055,7 @@ array_link::array_link (const array_link &rhs, const std::vector< int > &colperm
         }
 }
 
-/**
- * @brief Element access
- */
+
 array_t array_link::at (const int index) const {
 <<<<<<< HEAD
         if (index < 0 || index > this->n_rows * this->n_columns - 1) {
@@ -1035,7 +1074,7 @@ array_link array_link::clone () const {
 
 void array_link::setvalue (int r, int c, int val) {
         if ((r < 0) || (r >= this->n_rows) || (c < 0) || (c >= this->n_columns)) {
-                myprintf ("array_link error: index out of bounds %d %d (%d %d)!!\n", r, c, this->n_rows,
+                myprintf ("array_link::setvalue: index out of bounds %d %d shape (%d %d)!!\n", r, c, this->n_rows,
                           this->n_columns);
                 return;
         }
@@ -1068,10 +1107,8 @@ void array_link::setvalue (int r, int c, int val) {
 
 void array_link::setvalue (int r, int c, double val) {
         if ((r < 0) || (r >= this->n_rows) || (c < 0) || (c >= this->n_columns)) {
-#ifdef FULLPACKAGE
-                myprintf ("array_link error: index out of bounds %d %d (%d %d)!!\n", r, c, this->n_rows,
+                myprintf ("array_link::setvalue: index out of bounds %d %d shape (%d %d)!!\n", r, c, this->n_rows,
                           this->n_columns);
-#endif
                 return;
         }
 
@@ -1081,8 +1118,25 @@ void array_link::setvalue (int r, int c, double val) {
 void array_link::_setvalue (int r, int c, int val) { this->array[r + this->n_rows * c] = val; }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 array_t array_link::_at (const rowindex_t r, const colindex_t c) const { return this->array[r + this->n_rows * c]; }
 =======
+=======
+void array_link::negateRow (rowindex_t row) {
+          for (int c = 0; c < this->n_columns; c++) {
+               this->atfast (row, c) *= -1;
+          }
+}
+void array_link::show () const { myprintf ("array_link: index: %d, shape (%d, %d), data pointer %p\n", index, n_rows, n_columns, (void *)array); }
+
+std::string array_link::showstr () const {
+          std::stringstream s;
+          s << "array_link: " << n_rows << ", " << n_columns << "";
+          std::string rs = s.str ();
+          return rs;
+}
+        
+>>>>>>> pieter/dev
 bool array_link::_valid_index (int index) const {
         if ((index < 0) || (index >= this->n_rows*this->n_columns)) {
                 return false;
@@ -1111,7 +1165,7 @@ array_t array_link::at (const rowindex_t r, const colindex_t c) const {
                 return 0;
 =======
         if ( ! this->_valid_index(r, c) ) {
-                throw std::out_of_range (printfstring("array_link error: index out of bounds %d %d (%d %d)!!\n", r, c, this->n_rows,
+                throw std::out_of_range (printfstring("array_link::at: index out of bounds %d %d shape (%d %d)!!\n", r, c, this->n_rows,
                           this->n_columns));
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         }
@@ -1133,7 +1187,7 @@ array_t &array_link::at (const rowindex_t r, const colindex_t c) {
 #endif
 =======
         if ( ! this->_valid_index(r, c) ) {
-                throw std::out_of_range (printfstring("array_link error: index out of bounds %d %d (%d %d)!!\n", r, c, this->n_rows,
+                throw std::out_of_range (printfstring("array_link::at: index out of bounds %d %d shape (%d %d)!!\n", r, c, this->n_rows,
                           this->n_columns));
         }
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
@@ -1315,6 +1369,22 @@ void showArrayList (const arraylist_t &lst) {
         }
 }
 
+template < class atype >
+/// write array to output stream
+void write_array_format(std::ostream &ss, const atype *array, const int nrows, const int ncols, int width = 3) {
+	assert(array != 0 || ncols == 0);
+
+	int count;
+	for (int j = 0; j < nrows; j++) {
+		count = j;
+		for (int k = 0; k < ncols; k++) {
+			const char *s = (k < ncols - 1) ? " " : "\n";
+			ss << std::setw(width) << array[count] << s;
+			count += nrows;
+		}
+	}
+}
+
 #ifdef FULLPACKAGE
 
 /**
@@ -1482,7 +1552,7 @@ array_link exampleArray (int idx, int verbose) {
         case 39: {
                 dstr = "first LMC0 conference design in C(8,6)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (8, 6, 0);
                 int tmp[] = {0, 1,  1,  1, 1, 1, 1,  1, 1, 0,  1, 1,  1, -1, -1, -1, 1, -1, 0,  1,  -1, 1, 1, -1,
@@ -1495,7 +1565,7 @@ array_link exampleArray (int idx, int verbose) {
         case 38: {
                 dstr = "LMC0 conference design in C(30,3)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (30, 3, 0);
                 int tmp[] = {0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1, 1, 1,
@@ -1509,7 +1579,7 @@ array_link exampleArray (int idx, int verbose) {
         case 35: {
                 dstr = "first double conference design in DC(20,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (20, 4, 0);
                 int tmp[] = {0, 0,  1, 1, 1, 1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -1523,7 +1593,7 @@ array_link exampleArray (int idx, int verbose) {
         case 36: {
                 dstr = "second double conference design in DC(20,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (20, 4, 0);
                 int tmp[] = {0, 0,  1, 1,  1, 1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -1537,7 +1607,7 @@ array_link exampleArray (int idx, int verbose) {
         case 37: {
                 dstr = "third double conference design in DC(20,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (20, 4, 0);
                 int tmp[] = {0, 0,  1, 1,  1,  1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -1551,7 +1621,7 @@ array_link exampleArray (int idx, int verbose) {
         case 32: {
                 dstr = "first double conference design in DC(18,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (18, 4, 0);
                 int tmp[] = {0, 0, 1, 1, 1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1, -1, -1, -1,
@@ -1565,7 +1635,7 @@ array_link exampleArray (int idx, int verbose) {
         case 33: {
                 dstr = "second double conference design in DC(18,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (18, 4, 0);
                 int tmp[] = {0, 0, 1, 1,  1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1, -1, -1, -1,
@@ -1579,7 +1649,7 @@ array_link exampleArray (int idx, int verbose) {
         case 34: {
                 dstr = "third double conference design in DC(18,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (18, 4, 0);
                 int tmp[] = {0, 0,  1, 1, 1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1, -1, -1, -1,
@@ -1594,7 +1664,7 @@ array_link exampleArray (int idx, int verbose) {
         case 31: {
                 dstr = "conference design in C(8,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (4, 8, 0);
                 int tmp[] = {0, 1, 1,  1, 1, 0,  -1, -1, 1, 1,  0, -1, 1, 1,  1,  0,
@@ -1607,7 +1677,7 @@ array_link exampleArray (int idx, int verbose) {
         case 30: {
                 dstr = "conference design in C(8,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (8, 4, 0);
                 int tmp[] = {0, 1,  1, 1, 1,  1, 1, 1,  1, 0,  1, 1,  1, -1, -1, -1,
@@ -1619,7 +1689,7 @@ array_link exampleArray (int idx, int verbose) {
         case 0: {
                 dstr = "array in OA(8,2, 2^2)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (8, 2, 0);
                 std::vector< int > s;
@@ -1633,7 +1703,7 @@ array_link exampleArray (int idx, int verbose) {
         case 1: {
                 dstr = "array 3 in OA(16, 2, 2^5)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (16, 5, 0);
                 int tmp[] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
@@ -1646,7 +1716,7 @@ array_link exampleArray (int idx, int verbose) {
         case 2: {
                 dstr = "array 6 in OA(16, 2, 2^6)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (16, 6, 0);
@@ -1661,7 +1731,7 @@ array_link exampleArray (int idx, int verbose) {
         case 3: {
                 dstr = "array ? in OA(32, 3, 2^7)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (32, 7, 0);
@@ -1682,7 +1752,7 @@ array_link exampleArray (int idx, int verbose) {
         case 4: {
                 dstr = "array 4 in OA(16, 2, 2^7)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 // array 4 in OA(16, 2, 2^7)
@@ -1698,7 +1768,7 @@ array_link exampleArray (int idx, int verbose) {
         case 5: {
                 dstr = "array 0 in OA(24, 2, 4 3 2^a)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (24, 5, 0);
@@ -1715,7 +1785,7 @@ array_link exampleArray (int idx, int verbose) {
 
                 dstr = "array in OA(4, 2, 2^a)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (4, 3, 0);
                 int tmp[] = {0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1};
@@ -1726,7 +1796,7 @@ array_link exampleArray (int idx, int verbose) {
         case 7: {
                 dstr = "array 0 in OA(4, 2, 2^a)?";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (4, 3, 0);
                 int tmp[] = {0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0};
@@ -1737,7 +1807,7 @@ array_link exampleArray (int idx, int verbose) {
         case 8: {
                 dstr = "array in OA(40, 3, 2^7)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (40, 7, 0);
                 int tmp[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1763,7 +1833,7 @@ array_link exampleArray (int idx, int verbose) {
                 dstr = "array in A(40, 2^7), D-optimal";
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (40, 7, 0);
@@ -1784,7 +1854,7 @@ array_link exampleArray (int idx, int verbose) {
         }
         case 10: {
                 if (verbose) {
-                        myprintf ("exampleArray: array in OA(9, 3^2)\n");
+                        myprintf ("exampleArray %d: array in OA(9, 3^2)\n", idx);
                 }
                 array_link al (9, 3, 0);
                 int tmp[] = {0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 1, 2, 1, 1, 2, 0, 0, 2, 2, 0, 2, 0, 2, 1, 0, 1, 1};
@@ -1795,7 +1865,7 @@ array_link exampleArray (int idx, int verbose) {
         }
         case 11: {
                 if (verbose) {
-                        myprintf ("exampleArray: D-optimal array in OA(44, 2^8)\n");
+                        myprintf ("exampleArray %d: D-optimal array in OA(44, 2^8)\n", idx);
                 }
                 array_link al (44, 8, 0);
                 int tmp[] = {1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1,
@@ -1818,7 +1888,7 @@ array_link exampleArray (int idx, int verbose) {
 
         case 12: {
                 if (verbose) {
-                        myprintf ("exampleArray: even-odd array OA(64, 2^13)\n");
+                        myprintf ("exampleArray %d: even-odd array OA(64, 2^13)\n", idx);
                 }
                 array_link al (64, 13, 0);
                 int tmp[] = {
@@ -1857,7 +1927,7 @@ array_link exampleArray (int idx, int verbose) {
         case 13: {
                 dstr = "array in OA(25, 2^5)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (24, 5, 0);
@@ -1874,7 +1944,7 @@ array_link exampleArray (int idx, int verbose) {
         case 14: {
                 dstr = "design in D(28, 2^5), D-efficiency is low";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (28, 5, 0);
@@ -1892,7 +1962,7 @@ array_link exampleArray (int idx, int verbose) {
         case 15: {
                 dstr = "design in D(56, 2^10), D-efficiency is low";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
 
                 array_link al (56, 10, 0);
@@ -1923,7 +1993,7 @@ array_link exampleArray (int idx, int verbose) {
         case 16: {
                 dstr = "array in OA(32, 2, 2^5)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (32, 5, 0);
                 int tmp[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1940,7 +2010,7 @@ array_link exampleArray (int idx, int verbose) {
         case 17: {
                 dstr = "unique array in OA(64, 4, 2^7)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (64, 7, 0);
                 int tmp[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1967,7 +2037,7 @@ array_link exampleArray (int idx, int verbose) {
         case 18: {
                 dstr = "conference matrix of size 16, 7";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (7, 16, 0);
                 int tmp[] = {0,  1,  1,  1, 1,  1,  1,  1,  0,  -1, -1, -1, -1, -1, 1,  1,  0,  -1, -1, -1, 1, 1,  1,
@@ -1985,7 +2055,7 @@ array_link exampleArray (int idx, int verbose) {
         case 19: {
                 dstr = "conference matrix of size 4, 3";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (3, 4, 0);
                 int tmp[] = {0, 1, 1, 1, 0, -1, 1, 1, 0, 1, -1, 1};
@@ -1999,7 +2069,7 @@ array_link exampleArray (int idx, int verbose) {
         case 20: {
                 dstr = "first LMC-0 double conference matrix in DC(24,3)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (24, 3, 0);
                 int tmp[] = {0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1,
@@ -2015,7 +2085,7 @@ array_link exampleArray (int idx, int verbose) {
         case 21: {
                 dstr = "second LMC-0 double conference matrix in DC(16,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (16, 4, 0);
                 int tmp[] = {0,  0,  1,  1,  1, 1,  1, 1,  1,  -1, -1, -1, -1, -1, -1, -1, 1, -1, 0,  1, 1, 1,
@@ -2029,7 +2099,7 @@ array_link exampleArray (int idx, int verbose) {
         case 22: {
                 dstr = "LMC-0 double conference matrix in DC(32,4)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (32, 4, 0);
                 int tmp[] = {0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1,
@@ -2047,7 +2117,7 @@ array_link exampleArray (int idx, int verbose) {
         case 23: {
                 dstr = "LMC-0 double conference matrix in DC(32,6)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (32, 6, 0);
                 int tmp[] = {0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  -1, -1, -1, -1, -1,
@@ -2067,7 +2137,7 @@ array_link exampleArray (int idx, int verbose) {
         case 24: {
                 dstr = "design in OA(64, 3, 2^16) (even-odd)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (64, 16, 0);
                 int tmp[] = {
@@ -2111,7 +2181,7 @@ array_link exampleArray (int idx, int verbose) {
         case 25: {
                 dstr = "design in OA(64, 3, 2^16) (even-odd)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (64, 16, 0);
                 int tmp[] = {
@@ -2155,7 +2225,7 @@ array_link exampleArray (int idx, int verbose) {
         case 26: {
                 dstr = "design in OA(64, 3, 2^16) (even-odd)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (16, 64, 0);
                 int tmp[] = {
@@ -2200,7 +2270,7 @@ array_link exampleArray (int idx, int verbose) {
         case 27: {
                 dstr = "design in OA(64, 3, 2^16) (even-odd)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (16, 64, 0);
                 int tmp[] = {
@@ -2245,7 +2315,7 @@ array_link exampleArray (int idx, int verbose) {
         case 28: {
                 dstr = "conference design in C(4, 3) in LMC0 form";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (4, 3, 0);
                 int tmp[] = {0, 1, 1, 1, 1, 0, 1, -1, 1, -1, 0, 1};
@@ -2256,7 +2326,7 @@ array_link exampleArray (int idx, int verbose) {
         case 29: {
                 dstr = "conference design in C(4, 3)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (4, 3, 0);
                 int tmp[] = {0, 1, 1, 1, 1, 0, 1, -1, 1, 1, -1, 0};
@@ -2268,7 +2338,7 @@ array_link exampleArray (int idx, int verbose) {
         case 40: {
                 dstr = "first conference design in C(14, 5)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (14, 5, 0);
                 int tmp[] = {0,  1,  1,  1,  1,  1, 1, 1,  1, 1,  1,  1,  1, 1,  1, 0,  1,  1,  1,  1, 1,  1, -1, -1,
@@ -2281,7 +2351,7 @@ array_link exampleArray (int idx, int verbose) {
         case 41: {
                 dstr = "second conference design in C(14, 5)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (14, 5, 0);
                 int tmp[] = {0,  1,  1,  1,  1,  1, 1, 1,  1, 1,  1,  1,  1, 1, 1, 0,  1,  1,  1,  1, 1,  1, -1, -1,
@@ -2294,7 +2364,7 @@ array_link exampleArray (int idx, int verbose) {
         case 42: {
                 dstr = "third conference design in C(14, 5)";
                 if (verbose) {
-                        myprintf ("exampleArray: %s\n", dstr.c_str ());
+                        myprintf ("exampleArray %d: %s\n", idx, dstr.c_str ());
                 }
                 array_link al (14, 5, 0);
                 int tmp[] = {0,  1,  1,  1,  1,  1, 1, 1,  1, 1,  1,  1,  1, 1,  1, 0,  1,  1,  1,  1, 1,  1, -1, -1,
@@ -2310,7 +2380,7 @@ array_link exampleArray (int idx, int verbose) {
 		case 43: {
 			dstr = "2x2 array with zeros and a singe value -1";
 			if (verbose) {
-				myprintf("exampleArray: %s\n", dstr.c_str());
+				myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
 			}
 			array_link al(2, 2, 0);
 			int tmp[] = { 0,  0,  0,  -1 };
@@ -2321,7 +2391,7 @@ array_link exampleArray (int idx, int verbose) {
 		 case 44: {
                         dstr = "D-optimal strength 3 ortogonal array in OA(40,3, 2^7)";
                         if (verbose) {
-                                myprintf("exampleArray: %s\n", dstr.c_str());
+                                myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
                         }
                          array_link array (40, 7, 0); 
                          int array_data_tmp[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,1,1,0,0,1,1,1,0,0,1,1,1,0,0,0,1,1,0,0,1,1,1,0,0,0,1,1,0,0,0,1,1,0,0,1,1,1,0,0,0,1,1,1,1,0,0,1,1,1,0,0,1,0,0,1,0,1,1,1,0,0,1,0,0,1,0,1,0,0,1,0,1,0,1,0,1,1,0,0,1,0,1,0,1,0,1,1,0,1,0,1,1,1,1,0,0,0,0,1,1,1,0,0,1,1,0,0,0,1,1,0,0,0,0,1,1,1,0,0,1,0,1,1,0,1,1,0,1,1,1,0,0,0,1,0,0,1,1,0,0,1,1,1,0,1,0,0,0,1,0,1,0,1,0,0,1,1};
@@ -2329,8 +2399,102 @@ array_link exampleArray (int idx, int verbose) {
                          return array;
                          break;
                 }
+<<<<<<< HEAD
    
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+		 case 45: {
+			 dstr = "first conference design in C(20,8)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(20, 8, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,-1,0,1,1,1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,0,1,1,1,1,-1,-1,-1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,0,1,-1,1,1,1,-1,-1,1,1,1,-1,1,1,-1,-1,1,-1,-1,-1,-1,0,1,1,1,-1,1,-1,1,1,-1,1,-1,-1,1,1,1,-1,-1,-1,1,-1,0,-1,1,1,1,1,-1,-1,1,1,1,-1,1,-1,1,-1,1,-1,-1,-1,1,0,-1,1,1,1,1,-1,1,-1,-1,1,-1,1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 46: {
+			 dstr = "second conference design in C(20,8)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(20, 8, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,-1,0,1,1,1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,0,1,1,1,1,-1,-1,-1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,0,1,-1,1,1,1,-1,-1,1,1,1,-1,1,1,-1,-1,1,-1,-1,-1,-1,0,1,1,1,-1,1,-1,1,1,-1,1,-1,-1,1,1,1,-1,-1,-1,1,-1,0,-1,1,1,1,1,-1,-1,1,1,1,-1,1,-1,1,-1,1,1,-1,-1,-1,1,0,1,-1,1,1,-1,1,-1,-1,-1,1,1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 47: {
+			 dstr = "third conference design in C(20,8)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(20, 8, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,-1,0,1,1,1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,0,1,1,1,1,-1,-1,-1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,0,1,-1,1,1,1,-1,-1,1,1,1,-1,1,1,-1,-1,1,-1,-1,-1,-1,0,1,1,1,-1,1,-1,1,1,-1,1,-1,-1,1,1,1,-1,-1,-1,1,-1,0,-1,1,1,1,1,-1,-1,1,1,1,-1,1,-1,1,-1,1,1,-1,-1,-1,1,0,1,-1,1,1,-1,-1,1,1,-1,-1,1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 48: {
+			 dstr = "last conference design in C(20,8)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(20, 8, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,-1,0,1,1,1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,0,1,1,-1,1,1,-1,-1,1,1,-1,-1,-1,1,1,1,-1,1,-1,1,-1,1,1,-1,0,-1,1,-1,-1,-1,1,1,-1,1,1,-1,1,1,1,-1,-1,1,-1,-1,1,1,-1,1,0,1,1,1,-1,-1,-1,-1,1,1,1,-1,1,1,-1,1,-1,-1,-1,1,-1,-1,0,1,-1,1,1,1,-1,1,1,1,-1,1,-1,-1,-1,-1,1,1,1,1,-1,-1,1,0,1,-1,-1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 49: {
+			 dstr = "array 4347 C(20,8)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(20, 8, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,-1,0,1,1,1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,0,1,-1,-1,1,1,1,-1,1,1,1,-1,-1,1,1,-1,-1,1,-1,-1,-1,0,1,1,1,-1,-1,1,1,-1,-1,1,-1,1,1,1,-1,1,-1,1,-1,-1,1,1,0,1,-1,-1,-1,1,-1,-1,1,1,1,-1,1,1,1,-1,-1,1,1,-1,-1,1,-1,1,-1,0,1,1,-1,1,-1,-1,1,1,1,-1,1,-1,-1,1,1,1,-1,-1,-1,-1,1,0,1,1,-1,1,-1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 50: {
+			 dstr = "array 4506 C(20,8)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(20, 8, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,-1,0,1,1,1,1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,0,1,-1,-1,1,1,1,-1,1,1,1,-1,-1,1,1,-1,-1,1,-1,-1,-1,0,1,1,1,-1,-1,1,1,-1,-1,1,-1,1,1,1,-1,1,-1,1,-1,-1,1,-1,0,1,-1,1,1,1,-1,-1,1,1,-1,-1,1,1,1,-1,-1,1,1,-1,-1,1,-1,1,-1,0,1,1,-1,-1,1,-1,1,1,1,-1,1,-1,-1,-1,1,1,-1,1,1,-1,1,0,1,-1,-1,1,-1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 51: {
+			 dstr = "first array in C(12,4)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(12, 4, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,-1,-1,-1,-1,-1,1,-1,0,1,1,-1,-1,1,1,1,-1,-1,1,-1,-1,0,-1,1,1,1,1,-1,1,-1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 52: {
+			 dstr = "second array in C(12,4)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(12, 4, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,-1,-1,-1,-1,-1,1,-1,0,1,1,-1,-1,1,1,1,-1,-1,1,1,-1,1,-1,1,-1,0,1,-1,1,-1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+		 case 53: {
+			 dstr = "third array in C(12,4)";
+			 if (verbose) {
+				 myprintf("exampleArray %d: %s\n", idx, dstr.c_str());
+			 }
+			 array_link array(12, 4, 0);
+			 int array_data_tmp[] = { 0,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,-1,-1,-1,-1,-1,1,-1,0,1,1,-1,-1,1,1,1,-1,-1,1,1,-1,-1,-1,1,1,0,1,1,-1,-1 };
+			 array.setarraydata(array_data_tmp, array.n_rows * array.n_columns);
+			 return array;
+		 }
+
+>>>>>>> pieter/dev
         } // end of switch
 
         return array_link (1, 1, -1);
@@ -2341,6 +2505,32 @@ array_link array_link::reduceDOP () const {
         return d;
 }
 
+MatrixFloat array_link::getEigenMatrix() const {
+	int ncolumns = this->n_columns;
+	int nrows = this->n_rows;
+	MatrixFloat mymatrix = MatrixFloat::Zero(nrows, ncolumns);
+
+	for (int column = 0; column < ncolumns; ++column) {
+		int column_offset = column * nrows;
+		for (int row = 0; row < nrows; ++row) {
+			mymatrix(row, column) = this->array[row + column_offset];
+		}
+	}
+	return mymatrix;
+}
+
+int array_link::columnGreater (int c1, const array_link &rhs, int rhs_column) const {
+
+          if ((this->n_rows != rhs.n_rows) || c1 < 0 || rhs_column < 0 || (c1 > this->n_columns - 1)) {
+               myprintf ("array_link::columnGreater: warning: comparing arrays with different sizes\n");
+               return 0;
+          }
+
+          int n_rows = this->n_rows;
+          return std::lexicographical_compare (rhs.array + rhs_column * n_rows, rhs.array + rhs_column * n_rows + n_rows,
+                                             array + c1 * n_rows, array + c1 * n_rows + n_rows);
+}
+        
 array_link array_link::reduceLMC () const {
         int strength = this->strength ();
         arraydata_t ad = arraylink2arraydata (*this, 0, strength);
@@ -2348,7 +2538,6 @@ array_link array_link::reduceLMC () const {
         reduction.mode = OA_REDUCE;
 
         OAextend oaextend;
-        // oaextend.setAlgorithmAuto(&ad);
         oaextend.setAlgorithm (MODE_ORIGINAL, &ad);
 
         reduction.init_state = SETROOT;
@@ -2362,8 +2551,9 @@ symmetry_group array_link::row_symmetry_group () const {
 
         const int nc = this->n_columns;
 
-        std::vector< mvalue_t< int > > rr (this->n_rows);
+        std::vector< mvalue_t< int > > row_elements (this->n_rows);
         for (int i = 0; i < this->n_rows; i++) {
+<<<<<<< HEAD
                 mvalue_t< int > &m = rr[i];
 <<<<<<< HEAD
                 m.v.resize (nc);
@@ -2371,6 +2561,9 @@ symmetry_group array_link::row_symmetry_group () const {
                 for (int k = 0; k < nc; k++) {
                         m.v[k] = this->atfast (i, k);
 =======
+=======
+                mvalue_t< int > &m = row_elements[i];
+>>>>>>> pieter/dev
                 m.values.resize (nc);
 
                 for (int k = 0; k < nc; k++) {
@@ -2378,8 +2571,8 @@ symmetry_group array_link::row_symmetry_group () const {
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
                 }
         }
-        symmetry_group sg (rr, true, 0);
-        return sg;
+        symmetry_group row_symmetry_group (row_elements, true, 0);
+        return row_symmetry_group;
 }
 
 double array_link::nonzero_fraction () const {
@@ -2392,7 +2585,15 @@ double array_link::nonzero_fraction () const {
         return nz / nn;
 }
 
-bool array_link::is_conference (int nz) const {
+void array_link::setcolumn (int target_column, const array_link &source_array, int source_column ) const {
+          assert (target_column >= 0);
+          assert (target_column <= this->n_columns);
+          assert (this->n_rows == source_array.n_rows);
+          std::copy (source_array.array + source_column * this->n_rows, source_array.array + (source_column + 1) * this->n_rows,
+                    this->array + this->n_rows * target_column);
+}
+        
+bool array_link::is_conference (int number_of_zeros) const {
         if (!this->is_conference ()) {
                 return false;
         };
@@ -2403,14 +2604,22 @@ bool array_link::is_conference (int nz) const {
                         if (this->atfast (r, c) == 0)
                                 n++;
                 }
-                if (n != nz)
+                if (n != number_of_zeros)
                         return false;
         }
         return true;
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+bool array_link::is_orthogonal_array() const {
+	if (this->min() < 0)
+		return false;
+	return true;
+}
+>>>>>>> pieter/dev
 
 bool array_link::is_mixed_level() const {
 	if (this->min() < 0)
@@ -2479,13 +2688,6 @@ void *array_link::data () {
 #else
 #endif
 
-std::string array_link::showarrayS () const {
-        std::stringstream ss;
-        ss << "array: \n";
-        write_array_format (ss, array, this->n_rows, this->n_columns);
-        return ss.str ();
-}
-
 bool array_link::equal_size(const array_link &rhs_array) const {
      if( (this->n_rows != rhs_array.n_rows) || (this->n_columns != rhs_array.n_columns) ) return false;
      else return true;
@@ -2501,8 +2703,15 @@ void array_link::showarraycompact () const {
 }
 
 void array_link::showarray () const {
-        myprintf ("array: \n");
-        write_array_format (array, this->n_rows, this->n_columns);
+        std::string out = this->showarrayString();
+        myprintf("%s", out.c_str());
+}
+
+std::string array_link::showarrayString () const {
+        std::stringstream ss;
+        ss << "array:\n";
+        write_array_format (ss, array, this->n_rows, this->n_columns);
+        return ss.str ();
 }
 <<<<<<< HEAD
 
@@ -2659,16 +2868,31 @@ void create_root (const arraydata_t *ad, arraylist_t &solutions) {
         solutions.push_back (cur_solution);
 }
 
+<<<<<<< HEAD
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
 /// calculate number of model parameters
 std::vector< int > numberModelParams (const array_link &al, int order = 2)
 
+=======
+std::vector< int > numberModelParametersConference(const array_link &conference_design)
+>>>>>>> pieter/dev
 {
-        int k = al.n_columns;
-        std::vector< int > n (order + 1);
-        n[0] = 1;
-        n[1] = al.n_columns;
+	int n_columns = conference_design.n_columns;
+	std::vector< int > number_parameters(4);
+	number_parameters[0] = 1;
+	number_parameters[1] = n_columns;
+	number_parameters[2] = n_columns * (n_columns - 1) / 2;
+	number_parameters[3] = n_columns;
+	return number_parameters;
+}
+std::vector< int > numberModelParams(const array_link &array, int order)
+{
+	if (order > 0) {
+		myprintf("numberModelParams: warning: order argument is not used any more\n");
+                exit(0);
+	}
 
+<<<<<<< HEAD
         if (order > 2) {
                 throw_runtime_exception("numberModelParams: not implemented for order > 2\n");
         }
@@ -2680,22 +2904,47 @@ std::vector< int > numberModelParams (const array_link &al, int order = 2)
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         std::vector< int > df = s;
         std::transform (df.begin (), df.end (), df.begin (), std::bind2nd (std::minus< int > (), 1.0));
+=======
+	if (array.is_conference()) {
+		return numberModelParametersConference(array);
+	}
+	if (array.is_orthogonal_array()) {
+		int k = array.n_columns;
+		std::vector< int > number_parameters(4);
+		number_parameters[0] = 1;
+		number_parameters[1] = array.n_columns;
 
-        /* main effect contrasts */
-        int mesize = std::accumulate (df.begin (), df.end (), 0);
-        n[1] = mesize;
+		arraydata_t arrayclass = arraylink2arraydata(array, 0, 2);
+		std::vector< int > s = arrayclass.factor_levels();
+		std::vector< int > df = s;
+		std::transform(df.begin(), df.end(), df.begin(), std::bind2nd(std::minus< int >(), 1.0));
 
-        /* 2fi*/
-        int number_of_2factor_interactions = 0;
-        for (int ii = 0; ii < k - 1; ii++) {
-                for (int jj = ii + 1; jj < k; jj++) {
-                        number_of_2factor_interactions += df[ii] * df[jj];
-                }
-        }
+		/* main effect contrasts */
+		int mesize = std::accumulate(df.begin(), df.end(), 0);
+		number_parameters[1] = mesize;
 
-        if (order >= 2)
-                n[2] = number_of_2factor_interactions;
-        return n;
+		/* 2fi*/
+		int number_of_2factor_interactions = 0;
+		for (int ii = 0; ii < k - 1; ii++) {
+			for (int jj = ii + 1; jj < k; jj++) {
+				number_of_2factor_interactions += df[ii] * df[jj];
+			}
+		}
+		number_parameters[2] = number_of_2factor_interactions;
+>>>>>>> pieter/dev
+
+		/* quadratic effects*/
+		int number_of_quadratic_interactions = 0;
+		for (int ii = 0; ii < k - 1; ii++) {
+			number_of_quadratic_interactions += df[ii] * df[ii];
+		}
+		number_parameters[3] = number_of_quadratic_interactions;
+
+		return number_parameters;
+	}
+	throw_runtime_exception("array type invalid");
+
+        return std::vector<int>();
 }
 
 MatrixFloat array_link::getModelMatrix (int order, int intercept, int verbose) const {
@@ -2703,7 +2952,7 @@ MatrixFloat array_link::getModelMatrix (int order, int intercept, int verbose) c
         MatrixFloat intcpt = MatrixFloat::Zero (N, 1);
         intcpt.setConstant (1);
 
-        std::vector< int > np = numberModelParams (*this, order);
+        std::vector< int > np = numberModelParams (*this);
         if (verbose >= 1) {
                 myprintf ("array_link::getModelMatrix numberModelParams: ");
                 printf_vector (np, "%d", " ");
@@ -2850,7 +3099,7 @@ std::pair< MatrixFloat, MatrixFloat > array2eigenModelMatrixMixed (const array_l
                 printfd ("main effects: size %dx%d\n", N, mesize);
         }
 
-        std::vector< int > np = numberModelParams (al, 2);
+        std::vector< int > np = numberModelParams (al);
         MatrixFloat main_effects = MatrixFloat::Zero (N, mesize);
 
         int meoffset = 0;
@@ -3177,7 +3426,11 @@ int jvalue_conference (const array_link &ar, const int J, const int *pp) {
 
 /// calculate J-characteristics for a conference design
 std::vector< int > Jcharacteristics_conference (const array_link &al, int jj, int verbose) {
+<<<<<<< HEAD
         assert (al.max () == 1 && al.min () == -1);
+=======
+        myassert (al.max () == 1 && al.min () == -1, "array is not conference design");
+>>>>>>> pieter/dev
 
         const int k = al.n_columns;
         const int nc = ncombs (k, jj);
@@ -3201,9 +3454,8 @@ int array_link::rank () const { return arrayrank (*this); }
 int array_link::strength () const {
         int t = -1;
         for (int i = 0; i <= this->n_columns; i++) {
-                int b = strength_check (*this, i);
-                // myprintf("strength_check %d->%d\n", i, b);
-                if (b) {
+                int has_strength = strength_check (*this, i);
+                if (has_strength) {
                         t = i;
                 } else {
                         break;
@@ -3315,7 +3567,6 @@ arraydata_t::arraydata_t (const arraydata_t *adp, colindex_t newncols) {
         complete_arraydata ();
 }
 
-/// @brief copy constructor
 arraydata_t::arraydata_t (const arraydata_t &adp)
     : N (adp.N), ncols (adp.ncols), strength (adp.strength), order (adp.order), colgroupindex (0), colgroupsize (0) {
         s = new array_t[ncols];
@@ -3326,6 +3577,44 @@ arraydata_t::~arraydata_t () {
         delete[] s;
         delete[] colgroupindex;
         delete[] colgroupsize;
+}
+
+arraydata_t& arraydata_t::operator= (const arraydata_t &ad2) {
+	this->N = ad2.N;
+	this->strength = ad2.strength;
+	this->ncols = ad2.ncols;
+	this->order = ad2.order;
+	if (s != 0) {
+		delete[] s;
+	}
+	this->s = new array_t[this->ncols];
+
+	if (ad2.s == 0) {
+		myprintf("error: invalid arraydata_t structure\n");
+	}
+	std::copy(ad2.s, ad2.s + this->ncols, s);
+	return *this;
+}
+
+int arraydata_t::operator== (const arraydata_t &ad2) {
+	if (this->N != ad2.N) {
+		return 0;
+	}
+
+	if (this->ncols != ad2.ncols) {
+		return 0;
+	}
+	if (!std::equal(this->s, this->s + this->ncols, ad2.s)) {
+		return 0;
+	}
+	if (this->strength != ad2.strength) {
+		return 0;
+	}
+	if (this->order != ad2.order) {
+		return 0;
+	}
+
+	return 1;
 }
 
 void arraydata_t::writeConfigFile (const char *file) const {
@@ -3429,7 +3718,7 @@ std::string arraydata_t::idstrseriesfull () const {
 /// return full identifier string
 std::string arraydata_t::fullidstr (int series) const {
         if (series) {
-                return this->idstrseriesfull (); // + "-t" + printfstring ( "%d", this->strength );
+                return this->idstrseriesfull (); 
         } else {
                 return this->idstr () + "-t" + printfstring ("%d", this->strength);
         }
@@ -3453,11 +3742,19 @@ std::string arraydata_t::idstr () const {
         return fname;
 }
 
-/**
- * @brief Calculate derived data such as the index and column groups from a design
+/** Calculate derived data such as the index and column groups from a design
  */
 void arraydata_t::complete_arraydata () {
         const int verbose = 0;
+
+		if (!this->is_factor_levels_sorted() ) {			
+			myprintf("arraydata_t: warning: the factor levels of the structure are not sorted, this can lead to undefined behaviour\n");
+			this->show();
+		}
+		
+		if (!check_divisibility(this)) {
+			myprintf("arraydata_t: warning: no orthogonal arrays exist with the specified strength %d and specified factor levels\n", this->strength);
+		}
 
         if (verbose) {
                 myprintf ("complete_arraydata: strength %d\n", this->strength);
@@ -3479,9 +3776,7 @@ void arraydata_t::complete_arraydata () {
         this->calcoaindex (ad->strength);
 
         /* calculate column group structure */
-        std::vector< int > xx (ad->s, ad->s + ad->ncols);
-
-        symmetry_group sg (xx, 0);
+        symmetry_group sg (ad->factor_levels(), 0);
 
         ad->ncolgroups = sg.ngroups;
         ad->colgroupindex = new colindex_t[ad->ncolgroups + 1];
@@ -3554,6 +3849,52 @@ array_link arraydata_t::create_root (int n_columns, int fill_value) const {
         return al;
 }
 
+/// return the factor level for the specified column return -1 if the column index is invalid
+int arraydata_t::getfactorlevel(int idx) const {
+	if (idx < 0) {
+		return -1;
+	}
+	if (idx >= this->ncols) {
+		return -1;
+	}
+	return this->s[idx];
+}
+
+void arraydata_t::reset_strength(colindex_t t) {
+	strength = t;
+	delete[] colgroupindex;
+	delete[] colgroupsize;
+	complete_arraydata();
+}
+
+colindex_t arraydata_t::get_col_group(const colindex_t col) const {
+	colindex_t j = 0;
+	for (colindex_t i = 0; i < ncolgroups; i++) {
+		if (colgroupindex[i] <= col) {
+			j = i;
+		}
+		else {
+			break;
+		}
+	}
+	return j;
+}
+
+/// return True if the vector is sorting in descending order
+bool is_sorted_descending(const std::vector<int> values) {
+	for (size_t i = 0; i < values.size() - 1; i++) {
+		if (values[i] < values[i + 1])
+			return false;
+	}
+	return true;
+}
+bool arraydata_t::is_factor_levels_sorted() const
+{
+	std::vector<int> factor_levels = this->factor_levels();
+
+	return is_sorted_descending(factor_levels);
+}
+
 bool arraydata_t::is2level () const {
         for (int i = 0; i < this->ncols; i++) {
                 if (this->s[i] != 2) {
@@ -3599,6 +3940,31 @@ void arraydata_t::set_colgroups (const symmetry_group &sg) {
         std::copy (sg.gsize.begin (), sg.gsize.end (), this->colgroupsize);
 }
 
+void arraydata_t::show_colgroups () const {
+          myprintf ("arraydata_t: colgroups: ");
+          print_perm (this->colgroupindex, this->ncolgroups);
+          myprintf ("                  size: ");
+          print_perm (this->colgroupsize, this->ncolgroups);
+}
+
+void arraydata_t::calculate_oa_index (colindex_t strength) {
+          int combs = 1;
+          for (int i = 0; i < this->strength; i++) {
+               combs *= this->s[i];
+          }
+
+		  if ( ! check_divisibility(this) ) {
+			  this->oaindex = 0;
+			  return;
+		  }
+
+          if (combs == 0 || (this->N % combs) != 0) {
+               this->oaindex = 0;
+          } else {
+               this->oaindex = this->N / combs;
+          }
+}
+        
 /**
  * @brief Complete arraydata but treat last column as single column group
  */
@@ -3622,7 +3988,6 @@ void arraydata_t::complete_arraydata_splitn (int ns) {
         ad->oaindex = ad->N / combs;
         ad->ncolgroups = 2;
 
-        // ad->colgroupindex = new colindex_t[ad->N];
         colgroupindex = new colindex_t[ad->ncolgroups + 1];
         colgroupsize = new colindex_t[ad->ncolgroups + 1];
         colgroupindex[0] = 0;
@@ -3670,7 +4035,6 @@ std::vector< int > jstructbase_t::calculateF () const {
                 int fi = abs (values[i]);
                 int idx = jvalue2index.find (fi)->second;
                 F[idx]++;
-                // printf("value %d: idx %d\n", fi, idx);
         }
         return F;
 }
@@ -3678,9 +4042,8 @@ std::vector< int > jstructbase_t::calculateF () const {
 /* analyse arrays */
 
 jstruct_t::jstruct_t () {
-        // myprintf("jstruct_t()\n");
         this->nc = 0;
-        this->A = -1;
+        this->abberation = -1;
 }
 
 int jstruct_t::maxJ () const {
@@ -3718,6 +4081,15 @@ std::vector< int > jstruct_t::calculateF (int strength) const {
         return F;
 }
 
+void jstruct_t::calculateAberration() {
+	jstruct_t *js = this;
+	js->abberation = 0;
+	for (int i = 0; i < js->nc; i++) {
+		js->abberation += js->values[i] * js->values[i];
+	}
+	js->abberation /= N * N;
+}
+
 void jstruct_t::calc (const array_link &al) {
         int *pp = new_perm_init< int > (jj);
         // int ncolcombs = ncombs ( k, jj );
@@ -3732,6 +4104,24 @@ void jstruct_t::calc (const array_link &al) {
 
         delete_perm (pp);
 }
+
+void jstructconference_t::calcJvalues(int N, int jj) {
+	if (jj % 2 != 0) {
+		throw_runtime_exception("calculation of J-characteristics for conference matrices only supported for even J");
+	}
+	if (jj != 4) {
+		throw_runtime_exception("calculation of J-characteristics for conference matrices only supported for J=4");
+	}
+	int nn = floor(double(int((N - jj + 1) / 4))) + 1;
+	this->jvalues = std::vector< int >(nn);
+	this->jvalue2index.clear();
+	for (size_t i = 0; i < jvalues.size(); i++) {
+		int jval = (N - jj) - i * 4;
+		jvalues[i] = jval;
+		jvalue2index[jval] = i;
+	}
+}
+void jstructconference_t::calc(const array_link &al) { values = Jcharacteristics_conference(al, this->jj); }
 
 /// create J2 table as intermediate result for J-characteristic calculations for conference matrices
 array_link createJ2tableConference (const array_link &confmatrix) {
@@ -3902,7 +4292,7 @@ void jstruct_t::init (int N_, int k_, int jj_) {
 
         this->nc = ncombs< long > (k_, jj_);
         values = std::vector< int > (nc);
-        this->A = -1;
+        this->abberation = -1;
 }
 
 jstruct_t::jstruct_t (const jstruct_t &js) {
@@ -3910,7 +4300,7 @@ jstruct_t::jstruct_t (const jstruct_t &js) {
         k = js.k;
         jj = js.jj;
         nc = js.nc;
-        A = js.A;
+        abberation = js.abberation;
         values = std::vector< int > (nc);
         std::copy (js.values.begin (), js.values.begin () + nc, values.begin ());
         // myprintf("jstruct_t(): copy constructor: js.vals %d, new %d\n", js.vals, vals);
@@ -3923,7 +4313,7 @@ jstruct_t &jstruct_t::operator= (const jstruct_t &rhs) {
         this->jj = rhs.jj;
         this->nc = rhs.nc;
 
-        this->A = rhs.A;
+        this->abberation = rhs.abberation;
         values = std::vector< int > (nc);
         std::copy (rhs.values.begin (), rhs.values.begin () + nc, values.begin ());
         // myprintf("jstruct_t(): copy constructor: js.vals %d, new %d\n", js.vals, vals);
@@ -3941,6 +4331,7 @@ std::string jstruct_t::showstr () {
         return ss.str ();
 }
 
+<<<<<<< HEAD
 =======
 void eigen2numpyHelper (double *pymat1, int n, const MatrixFloat &m) {
         myprintf ("pymat1 %p\n", (void *)pymat1);
@@ -3953,6 +4344,30 @@ void eigenInfo (const MatrixFloat m, const char *str, int verbose) {
         }
         if (verbose == 2) {
                 myprintf ("%s: %dx%d\n", str, (int)m.rows (), (int)m.cols ());
+=======
+int jstruct_t::allzero() const {
+	for (int i = 0; i < this->nc; ++i) {
+		if (this->values[i] != 0) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+void jstruct_t::show () const {
+#ifdef FULLPACKAGE
+        std::cout << "jstruct_t: " << printfstring ("N %d, jj %d, values ", N, jj);
+        for (int x = 0; x < this->nc; x++) {
+                cout << printfstring (" %d", values[x]);
+        }
+        std::cout << std::endl;
+#endif
+}
+
+void jstruct_t::showdata () {
+        for (size_t x = 0; x < this->values.size (); x++) {
+                myprintf("%s", printfstring (" %d", values[x]).c_str());
+>>>>>>> pieter/dev
         }
 }
 void eigenInfoF (const Eigen::MatrixXf m, const char *str, int verbose) {
@@ -5798,6 +6213,61 @@ bool arrayfile_t::isbinary () const {
         return (this->mode == ABINARY || this->mode == ABINARY_DIFF || this->mode == ABINARY_DIFFZERO);
 }
 
+int arrayfile_t::swigcheck () const {
+#ifdef SWIGCODE
+          if (sizeof (int) != 4) {
+               fprintf (stderr, "arrayfile_t: error int is not 32-bit?!\n");
+          }
+          return 1;
+#else
+          return 0;
+#endif
+}
+
+/// return string describing the object
+std::string arrayfile_t::showstr () const {
+          if (this->isopen ()) {
+               std::string modestr;
+               switch (mode) {
+               case ALATEX:
+                         modestr = "latex";
+                         break;
+               case ATEXT:
+                         modestr = "text";
+                         break;
+               case ABINARY:
+                         modestr = "binary";
+                         break;
+               case ABINARY_DIFF:
+                         modestr = "binary_diff";
+                         break;
+               case ABINARY_DIFFZERO:
+                         modestr = "binary_diffzero";
+                         break;
+               case AERROR:
+                         modestr = "invalid";
+                         break;
+               default:
+                         modestr = "error";
+                         myprintf ("arrayfile_t: showstr(): no such mode\n");
+                         break;
+               }
+
+               int na = narrays;
+               if (this->rwmode == WRITE) {
+                         na = narraycounter;
+               }
+
+               std::string s = printfstring ("file %s: %d rows, %d columns, %d arrays", filename.c_str (),
+                                             nrows, ncols, na);
+               s += printfstring (", mode %s, nbits %d", modestr.c_str (), nbits);
+               return s;
+          } else {
+               std::string s = "file " + filename + ": invalid file";
+               return s;
+          }
+}
+        
 void arrayfile_t::append_array (const array_link &a, int specialindex) {
         int r;
         if (!this->isopen ()) {
@@ -5880,6 +6350,37 @@ arrayfile_t::arrayfile_t (const std::string fname, int nrows, int ncols, int nar
         createfile (fname, nrows, ncols, narrays_, m, nb);
 }
 
+int arrayfile_t::headersize () const { return 8 * sizeof (int32_t); }
+
+int arrayfile_t::barraysize () const {
+          int num = sizeof (int32_t);
+
+          switch (this->nbits) {
+          case 8:
+               num += nrows * ncols;
+               break;
+          case 32:
+               num += nrows * ncols * 4;
+               break;
+          case 1: {
+               word_addr_t num_of_words = nwords (nrows * ncols);
+               num += sizeof (word_t) * num_of_words;
+          } break;
+          default:
+               myprintf ("error: number of bits undefined\n");
+               break;
+          }
+          return num;
+}
+
+size_t arrayfile_t::afwrite (void *ptr, size_t t, size_t n) {
+          if (this->nfid == 0) {
+               myprintf ("afwrite: not implemented, we cannot write compressed files\n");
+               return 0;
+          }
+          return fwrite (ptr, t, n, nfid);
+}
+        
 size_t arrayfile_t::afread (void *ptr, size_t sz, size_t cnt) {
 #ifdef USEZLIB
         size_t r;
@@ -6104,6 +6605,13 @@ int arrayfile_t::read_array (array_t *array, const int nrows, const int ncols) {
         return index;
 }
 
+void arrayfile_t::finisharrayfile() {
+	if (this->mode == ATEXT) {
+		fprintf(this->nfid, "-1\n");
+	}
+	this->closefile();
+}
+
 void arrayfile_t::writeheader () {
         assert (this->nfid);
 
@@ -6152,6 +6660,18 @@ array_link::array_link (const array_t *array, rowindex_t nrows, colindex_t ncols
     : n_rows (nrows), n_columns (ncols), index (index_) {
         this->array = create_array (nrows, ncols);
         memcpy (this->array, array, nrows * ncolsorig * sizeof (array_t)); // FIX: replace by copy_array
+}
+
+std::string printfstring(const char *message, ...) {
+	char buf[32 * 1024];
+
+	va_list va;
+	va_start(va, message);
+	vsprintf(buf, message, va);
+	va_end(va);
+
+	std::string str(buf);
+	return str;
 }
 
 /**
@@ -6225,27 +6745,85 @@ long nArrays (const char *fname) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+void arrayfileinfo(const char *filename, int &number_of_arrays, int &number_of_rows, int &number_of_columns) {
+	arrayfile_t af(filename, 0);
+	number_of_arrays = af.narrays;
+	number_of_rows = af.nrows;
+	number_of_columns = af.ncols;
+	af.closefile();
+}
+
+>>>>>>> pieter/dev
 void appendArrays(const arraylist_t &arrays_to_append, arraylist_t &dst) {
 	for (arraylist_t::const_iterator it = arrays_to_append.begin(); it < arrays_to_append.end(); ++it) {
 		dst.push_back(*it);
 	}
 }
 
+<<<<<<< HEAD
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
+=======
+void convert_array_file(std::string input_filename, std::string output_filename, arrayfile::arrayfilemode_t output_format, int verbose)
+{
+	arrayfile_t input_array_file(input_filename.c_str());
+	int nc = input_array_file.ncols;
+	int nr = input_array_file.nrows;
+	array_link al(nr, nc, -1);
+
+	if (!input_array_file.isopen()) {
+		fprintf(stderr, "oaconvert: could not open input file, aborting...\n");
+		throw_runtime_exception(printfstring("convert_array_file: could not open input file %s", input_filename.c_str()));
+	}
+	if (verbose)
+		printf("oaconvert: output mode %d, nr %d nc %d\n", output_format, nr, nc);
+
+	{
+		// streaming mode
+		int narrays = input_array_file.narrays;
+		int nb = 8; // we have not read any arrays so far, so nb is hard to predict
+		if (output_format == ABINARY_DIFFZERO)
+			nb = 1;
+
+		arrayfile_t afout(output_filename.c_str(), nr, nc, narrays, output_format, nb);
+
+		if (input_array_file.narrays < 0) {
+			narrays = arrayfile_t::NARRAYS_MAX;
+			printf("warning: untested code! (number of arrays undefined)\n");
+		}
+
+		int index;
+		for (long i = 0; i < narrays; i++) {
+			if ((i % 10000 == 0 && verbose) || (verbose >= 3)) {
+				log_print(QUIET, "oaconvert: loading arrays: %d/%d\n", i, input_array_file.narrays);
+			}
+
+			int g = input_array_file.read_array(al);
+			if (g < 0) {
+				if (verbose)
+					printf("   oaconvert: read_array returned index %d, end of file\n", g);
+				break;
+			}
+
+			afout.append_array(al);
+		}
+
+		afout.finisharrayfile();
+	}
+
+}
+
+>>>>>>> pieter/dev
 arraylist_t readarrayfile (const char *fname, int verbose, int *setcols) {
         arraylist_t v;
         readarrayfile (fname, &v, verbose, setcols);
         return v;
 }
 
-/**
- * @brief Read all arrays in a file and store then in an array list
- * @param fname
- * @param arraylist
- * @return
- */
-int readarrayfile (const char *fname, arraylist_t *arraylist, int verbose, colindex_t *setcols, rowindex_t *setrows,
+
+int readarrayfile (const char *fname, arraylist_t *arraylist, int verbose, int *setcols, int *setrows,
                    int *setbits) {
 <<<<<<< HEAD
         // verbose=3;
@@ -6636,6 +7214,7 @@ arrayfile_t::arrayfile_t (const std::string fnamein, int verbose) {
         }
 }
 
+<<<<<<< HEAD
 /*!
   save_arrays writes all the arrays from solutions to a file. The filename is obtained from the number of processors,
   the number of factors and the number of columns so far. Then the file header contains the number of columns in the
@@ -6668,6 +7247,8 @@ int save_arrays (arraylist_t &solutions, const arraydata_t *ad, const int n_arra
         return 0;
 }
 
+=======
+>>>>>>> pieter/dev
 void arrayfile_t::closefile () {
         if (verbose >= 2) {
                 myprintf ("arrayfile_t::closefile(): nfid %ld\n", (long)nfid);
@@ -6758,7 +7339,6 @@ arrayfile_t::~arrayfile_t () {
  */
 arrayfile_t *create_arrayfile (const char *fname, int rows, int cols, int narrays, arrayfile::arrayfilemode_t mode,
                                int nbits) {
-        // myprintf("create array file: mode %d\n", mode);
         std::string s = fname;
         arrayfile_t *afile = new arrayfile_t (s, rows, cols, narrays, mode, nbits);
 
@@ -6853,6 +7433,35 @@ void arrayfile_t::write_array_binary_diff (const array_link &A) {
 
         // update with previous array
         this->diffarray = A;
+}
+
+int arrayfile_t::getnbits () { return nbits; }
+
+arrayfile::arrayfilemode_t arrayfile_t::parseModeString (const std::string format) {
+          arrayfile::arrayfilemode_t mode = arrayfile::ATEXT;
+          if (format == "AUTO" || format == "A") {
+               mode = arrayfile::A_AUTOMATIC;
+
+          } else {
+               if (format == "BINARY" || format == "B") {
+                         mode = arrayfile::ABINARY;
+               } else {
+                         if (format == "D" || format == "DIFF") {
+                              mode = arrayfile::ABINARY_DIFF;
+                         } else {
+                              if (format == "Z" || format == "DIFFZERO") {
+                                        mode = arrayfile::ABINARY_DIFFZERO;
+                              } else {
+                                        if (format == "AB" || format == "AUTOBINARY") {
+                                                  mode = arrayfile::A_AUTOMATIC_BINARY;
+                                        } else {
+                                                  mode = arrayfile::ATEXT;
+                                        }
+                              }
+                         }
+               }
+          }
+          return mode;
 }
 
 /**
@@ -6970,7 +7579,76 @@ void arrayfile_t::write_array_binary (carray_t *array, const int nrows, const in
         }
 }
 
-#include <errno.h>
+/** Read header for binary data file. Return true if valid header file
+*
+* The header consists of 4 integers: 2 magic numbers, then the number of rows and columns
+*/
+bool readbinheader(FILE *fid, int &nr, int &nc) {
+	if (fid == 0) {
+		return false;
+	}
+
+	double h[4];
+	int nn = fread(h, sizeof(double), 4, fid);
+	nr = (int)h[2];
+	nc = (int)h[3];
+
+	// myprintf("readbinheader: nn %d magic %f %f %f %f check %d %d\number_of_arrays", nn, h[0], h[1], h[2], h[3],
+	// h[0]==30397995, h[1]==12224883);
+	bool valid = false;
+
+	// check 2 numbers of the magic header
+	if (nn == 4 && h[0] == 30397995 && h[1] == 12224883) {
+		return true;
+	}
+
+	return valid;
+}
+
+/// Write header for binary data file
+void writebinheader(FILE *fid, int nr, int nc) {
+	double h[4];
+	// write 2 numbers of the magic header
+	h[0] = 30397995;
+	h[1] = 12224883;
+	h[2] = nr;
+	h[3] = nc;
+	fwrite(h, sizeof(double), 4, fid);
+}
+
+/// Write a vector of vector elements to binary file
+void vectorvector2binfile(const std::string fname, const std::vector< std::vector< double > > vals,
+	int writeheader, int na) {
+	FILE *fid = fopen(fname.c_str(), "wb");
+
+	if (fid == 0) {
+		fprintf(stderr, "vectorvector2binfile: error with file %s\n", fname.c_str());
+
+		throw_runtime_exception("vectorvector2binfile: error with file");
+	}
+
+	if (na == -1) {
+		if (vals.size() > 0) {
+			na = vals[0].size();
+		}
+	}
+	if (writeheader) {
+		writebinheader(fid, vals.size(), na);
+	}
+	else {
+		myprintf("warning: legacy file format\n");
+	}
+	for (unsigned int i = 0; i < vals.size(); i++) {
+		const std::vector< double > x = vals[i];
+		if ((int)x.size() != na) {
+			myprintf("error: writing incorrect number of elements to binary file\n");
+		}
+		for (unsigned int j = 0; j < x.size(); j++) {
+			fwrite(&(x[j]), sizeof(double), 1, fid);
+		}
+	}
+	fclose(fid);
+}
 
 int writearrayfile (const char *fname, const array_link &al, arrayfile::arrayfilemode_t mode) {
         arraylist_t s;
@@ -6979,7 +7657,7 @@ int writearrayfile (const char *fname, const array_link &al, arrayfile::arrayfil
 }
 
 /// append a single array to an array file. creates a new file if no file exists
-int appendarrayfile (const char *fname, const array_link al) {
+int append_arrayfile (const char *fname, const array_link al) {
         int dverbose = 0;
         int nb = 8; // default: char
         int nrows = -1, ncols = -1;
@@ -7134,78 +7812,78 @@ array_link selectArrays (const std::string filename, int ii) {
 
 #endif // FULLPACKAGE, related to arrayfile_t
 
-void selectArrays (const arraylist_t &al, std::vector< int > &idx, arraylist_t &rl) {
+void selectArrays (const arraylist_t &input_list, std::vector< int > &idx, arraylist_t &output_list) {
         for (std::vector< int >::iterator it = idx.begin (); it < idx.end (); it++) {
-                rl.push_back (al.at (*it));
+                output_list.push_back (input_list.at (*it));
         }
 }
-void selectArrays (const arraylist_t &al, std::vector< long > &idx, arraylist_t &rl) {
+void selectArrays (const arraylist_t &input_list, std::vector< long > &idx, arraylist_t &output_list) {
         for (std::vector< long >::iterator it = idx.begin (); it < idx.end (); it++) {
-                if ((*it) >= 0 && ((*it) < (int)al.size ())) {
-                        rl.push_back (al.at (*it));
+                if ((*it) >= 0 && ((*it) < (int)input_list.size ())) {
+                        output_list.push_back (input_list.at (*it));
                 } else {
                         myprintf ("selectArrays: index %ld out of bounds!\n", *it);
                 }
         }
 }
 
-arraylist_t selectArrays (const arraylist_t &al, std::vector< int > &idx) {
+arraylist_t selectArrays (const arraylist_t &input_list, std::vector< int > &idx) {
         arraylist_t rl;
         for (std::vector< int >::iterator it = idx.begin (); it < idx.end (); ++it) {
                 int val = *it;
-                if (val >= 0 && val <= (int)al.size ()) {
-                        rl.push_back (al.at (val));
+                if (val >= 0 && val <= (int)input_list.size ()) {
+                        rl.push_back (input_list.at (val));
                 } else {
                         myprintf ("selectArrays: error: index out of bounds: index %d, size %d\n", val,
-                                  (int)al.size ());
+                                  (int)input_list.size ());
                 }
         }
         return rl;
 }
 
-arraylist_t selectArrays (const arraylist_t &al, std::vector< long > &idx) {
+arraylist_t selectArrays (const arraylist_t &input_list, std::vector< long > &idx) {
         arraylist_t rl;
         for (std::vector< long >::iterator it = idx.begin (); it < idx.end (); ++it) {
                 int val = *it;
-                if (val >= 0 && val <= (int)al.size ()) {
-                        rl.push_back (al.at (val));
+                if (val >= 0 && val <= (int)input_list.size ()) {
+                        rl.push_back (input_list.at (val));
                 } else {
                         myprintf ("selectArrays: error: index out of bounds: index %d, size %ld\n", val,
-                                  (long)al.size ());
+                                  (long)input_list.size ());
                 }
         }
         return rl;
 }
 
-array_link array_link::operator+ (array_t v) const {
+array_link array_link::operator+ (array_t value) const {
         array_link tmp = (*this);
         for (int i = 0; i < tmp.n_columns * tmp.n_rows; i++) {
-                tmp.array[i] += v;
+                tmp.array[i] += value;
         }
         return tmp;
 }
-array_link array_link::operator- (array_t v) const {
+array_link array_link::operator- (array_t value) const {
         array_link tmp = (*this);
         for (int i = 0; i < tmp.n_columns * tmp.n_rows; i++) {
-                tmp.array[i] -= v;
-        }
-        return tmp;
-}
-
-array_link array_link::operator+ (const array_link &b) const {
-        assert (this->equalsize (b));
-        array_link tmp = (*this);
-        for (int i = 0; i < tmp.n_columns * tmp.n_rows; i++) {
-                tmp.array[i] += b.array[i];
+                tmp.array[i] -= value;
         }
         return tmp;
 }
 
-array_link array_link::operator- (const array_link &b) const {
-        assert (this->equalsize (b));
+array_link array_link::operator+ (const array_link &array) const {
+        assert (this->equalsize (array));
         array_link tmp = (*this);
         for (int i = 0; i < tmp.n_columns * tmp.n_rows; i++) {
-                tmp.array[i] -= b.array[i];
+                tmp.array[i] += array.array[i];
+        }
+        return tmp;
+}
+
+array_link array_link::operator- (const array_link &array) const {
+        assert (this->equalsize (array));
+        array_link tmp = (*this);
+        for (int i = 0; i < tmp.n_columns * tmp.n_rows; i++) {
+                tmp.array[i] -= array.array[i];
         }
         return tmp;
 }
@@ -7239,7 +7917,39 @@ array_link hstack (const array_link &al, const cperm &b) {
 =======
 }
 
-/// stack to arrays together
+array_link array_link::operator* (array_t val) const {
+          array_link al (*this);
+          int NN = this->n_rows * this->n_columns;
+          for (int i = 0; i < NN; i++) {
+               al.array[i] *= val;
+          }
+          return al;
+}
+
+array_link array_link::operator*= (array_t val) {
+          int NN = this->n_rows * this->n_columns;
+          for (int i = 0; i < NN; i++) {
+               this->array[i] *= val;
+          }
+          return *this;
+}
+
+array_link array_link::operator+= (array_t val) {
+          int NN = this->n_rows * this->n_columns;
+          for (int i = 0; i < NN; i++) {
+               this->array[i] += val;
+          }
+          return *this;
+}
+array_link array_link::operator-= (array_t val) {
+          int NN = this->n_rows * this->n_columns;
+          for (int i = 0; i < NN; i++) {
+               this->array[i] -= val;
+          }
+          return *this;
+}
+        
+/// stack two arrays together
 array_link vstack (const array_link &al, const array_link &b) {
         assert (al.n_columns == b.n_columns);
         array_link v (al.n_rows + b.n_rows, al.n_columns, array_link::INDEX_NONE);
@@ -7253,31 +7963,46 @@ array_link vstack (const array_link &al, const array_link &b) {
         return v;
 }
 
+<<<<<<< HEAD
 array_link hstack (const array_link &al, const conference_column &b) {
 >>>>>>> eda3ae59b7a81637e44d4cf3d072fd59c47ce60a
         assert (al.n_rows == (int)b.size ());
         array_link v (al.n_rows, al.n_columns + 1, array_link::INDEX_NONE);
         std::copy (al.array, al.array + al.n_columns * al.n_rows, v.array);
         std::copy (b.begin (), b.end (), v.array + v.n_rows * al.n_columns);
+=======
+array_link hstack (const array_link &array, const conference_column &column) {
+        assert (array.n_rows == (int)column.size ());
+        array_link v (array.n_rows, array.n_columns + 1, array_link::INDEX_NONE);
+        std::copy (array.array, array.array + array.n_columns * array.n_rows, v.array);
+        std::copy (column.begin (), column.end (), v.array + v.n_rows * array.n_columns);
+>>>>>>> pieter/dev
         return v;
 }
 
-/// stack to arrays together
-array_link hstack (const array_link &al, const array_link &b) {
-        assert (al.n_rows == b.n_rows);
-        array_link v (al.n_rows, al.n_columns + b.n_columns, array_link::INDEX_NONE);
-        std::copy (al.array, al.array + al.n_columns * al.n_rows, v.array);
-        std::copy (b.array, b.array + b.n_columns * al.n_rows, v.array + v.n_rows * al.n_columns);
-        return v;
+array_link hstack (const array_link &array_left, const array_link &array_right) {
+        assert (array_left.n_rows == array_right.n_rows);
+        array_link output_array (array_left.n_rows, array_left.n_columns + array_right.n_columns, array_link::INDEX_NONE);
+        std::copy (array_left.array, array_left.array + array_left.n_columns * array_left.n_rows, output_array.array);
+        std::copy (array_right.array, array_right.array + array_right.n_columns * array_left.n_rows, output_array.array + output_array.n_rows * array_left.n_columns);
+        return output_array;
 }
 
-/// append the last column of the second array to the entire first array
 array_link hstacklastcol (const array_link &al, const array_link &b) {
         array_link v (al.n_rows, al.n_columns + 1, array_link::INDEX_NONE);
         std::copy (al.array, al.array + al.n_columns * al.n_rows, v.array);
         size_t offset = al.n_rows * (b.n_columns - 1);
         std::copy (b.array + offset, b.array + offset + al.n_rows, v.array + v.n_rows * al.n_columns);
         return v;
+}
+
+/// concatenate two columns
+conference_column vstack(const conference_column &column_top, const conference_column &column_bottom) {
+	conference_column output_column(column_top.size() + column_bottom.size());
+
+	std::copy(column_top.begin(), column_top.end(), output_column.begin());
+	std::copy(column_bottom.begin(), column_bottom.end(), output_column.begin() + column_top.size());
+	return output_column;
 }
 
 void conference_transformation_t::show (int verbose) const {

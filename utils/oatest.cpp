@@ -21,12 +21,11 @@ Copyright: See LICENSE.txt file that comes with this distribution
 #include "arraytools.h"
 #include "extend.h"
 #include "graphtools.h"
-#include "graphtools.h"
+#include "unittests.h"
 #include "tools.h"
 
 #include "evenodd.h"
 #include "lmc.h"
-#include "oadevelop.h"
 
 #include "conference.h"
 
@@ -46,99 +45,9 @@ Copyright: See LICENSE.txt file that comes with this distribution
 
 using namespace Eigen;
 
-void speedcheck_conf (const char *input, int verbose, int nmax = 2000) {
-        double t0;
-        arraylist_t ll = readarrayfile (input);
-        printf ("### speedcheck: read from file (%d arrays)\n", (int)ll.size ());
-
-        t0 = get_time_ms ();
-        nmax = std::min ((int)(ll.size ()), nmax);
-        for (size_t i = 0; i < (size_t)nmax; i++) {
-                array_link al = ll[i];
-
-                // al = al.randomrowperm();
-                // al = al.randomcolperm();
-                if (verbose >= 2)
-                        al.showarray (); // print array
-                lmc_t r = LMC0check (al);
-                if (verbose >= 2)
-                        printf ("array %d: result %d\n (should be %d)\n", (int)i, r, (int)LMC_MORE);
-                if (0) {
-                        /* Apply random transformation */
-                        conference_transformation_t T1 (al);
-                        T1.randomize ();
-                        T1.show ();
-                        array_link al1 = T1.apply (al);
-                        if (verbose >= 2) {
-                                al1.showarray (); // Show transformed array
-                        }
-                        if (0) {
-                                lmc_t a = LMC0check (al1);
-                                if (verbose)
-                                        printf ("array %d: result %d\n (should be %d most of the time)\n", (int)i, a,
-                                                (int)LMC_LESS);
-                        }
-                }
-        }
-        printf ("dt lmc0  %.3f \n", get_time_ms () - t0);
-
-        {
-                ll.resize (nmax);
-                double t0 = get_time_ms ();
-                arraylist_t out = selectConferenceIsomorpismClasses (ll, 0, CONFERENCE_ISOMORPHISM);
-
-                for (size_t i = 0; i < (size_t)nmax; i++) {
-                        array_link al = ll[i];
-                }
-                printf ("dt nauty %.3f \n", get_time_ms () - t0);
-        }
-
-        return;
-}
 
 #include "graphtools.h"
 
-array_link array2xf2 (const array_link &al) {
-        const int k = al.n_columns;
-        const int n = al.n_rows;
-        const int m = 1 + k + k * (k - 1) / 2;
-        array_link out (n, m, array_link::INDEX_DEFAULT);
-
-        // init first column
-        int ww = 0;
-        for (int r = 0; r < n; ++r) {
-                out.array[r] = 1;
-        }
-
-        // init array
-        ww = 1;
-        for (int c = 0; c < k; ++c) {
-                int ci = c * n;
-                array_t *pout = out.array + (ww + c) * out.n_rows;
-                for (int r = 0; r < n; ++r) {
-                        pout[r] = 2 * al.array[r + ci] - 1;
-                }
-        }
-
-        // init interactions
-        ww = k + 1;
-        for (int c = 0; c < k; ++c) {
-                int ci = c * n + n;
-                for (int c2 = 0; c2 < c; ++c2) {
-                        int ci2 = c2 * n + n;
-
-                        const array_t *p1 = out.array + ci;
-                        const array_t *p2 = out.array + ci2;
-                        array_t *pout = out.array + ww * out.n_rows;
-
-                        for (int r = 0; r < n; ++r) {
-                                pout[r] = -(p1[r] * p2[r]);
-                        }
-                        ww++;
-                }
-        }
-        return out;
-}
 
 /// show information about Pareto criteria for conference matrix
 void paretoInfo (const array_link &alx) {
@@ -172,47 +81,6 @@ int arrayInPareto (const Pareto< mvalue_t< long >, array_link > &pset, const arr
         return jx;
 }
 
-/// check composition operator. returns 0 if test id good
-int checkConferenceComposition (const array_link &al, int verbose = 0) {
-        conference_transformation_t T1 (al);
-        // T1.randomizecolperm();
-        T1.randomizecolflips ();
-        // T1.randomizerowperm();
-        T1.randomizerowflips ();
-        T1.randomize ();
-
-        conference_transformation_t T2 (al);
-        // T2.randomize();
-        T2.randomizerowperm ();
-        // T2.randomizerowflips();
-        // T2.randomizecolperm();
-        // T2.randomizecolflips();
-
-        conference_transformation_t T3 = T2 * T1;
-
-        array_link al1 = T1.apply (al);
-        array_link al1t2 = T2.apply (al1);
-        array_link al3 = T3.apply (al);
-
-        if (verbose) {
-                printfd ("checkTransformationComposition: transforms\n");
-                printf ("-- T1 \n");
-                T1.show ();
-                printf ("-- T2 \n");
-                T2.show ();
-                printf ("-- T3 \n");
-                T3.show ();
-                printfd ("checkTransformationComposition: arrays\n");
-                al.showarray ();
-                al1.showarray ();
-                al1t2.showarray ();
-                al3.showarray ();
-        }
-
-        myassert (al3 == al1t2, "unittest error: composition of conference transformations\n");
-
-        return 0;
-}
 
 int main (int argc, char *argv[]) {
         AnyOption opt;
@@ -242,7 +110,7 @@ int main (int argc, char *argv[]) {
         double t0 = get_time_ms (), dt = 0;
         int randvalseed = opt.getIntValue ('r', 1);
         int ix = opt.getIntValue ('i', 1);
-        int r = opt.getIntValue ('r', 8);
+        int r = opt.getIntValue ('r', 1);
         int jj = opt.getIntValue ("jj", 5);
 
         int xx = opt.getIntValue ('x', 0);
@@ -260,6 +128,7 @@ int main (int argc, char *argv[]) {
                 srand (randvalseed);
         }
 
+<<<<<<< HEAD
         {
             array_link al = exampleArray(0);
             //array_link al(3,4,0);
@@ -521,209 +390,54 @@ int main (int argc, char *argv[]) {
                 printfd (" cache: generated %d\n", cl.size ());
 
                 exit (0);
+=======
+>>>>>>> pieter/dev
 
-                /*
-                std::vector<cperm>  cltotal;
-                for ( int i=0; i<ctype.N; i++ ) {
-                     CandidateGeneratorZero cgenerator2 ( array_link(), ctype, i );
-                     //cgenerator2.verbose=2;
-                     std::vector<cperm> clc;
-                     clc = cgenerator2.generateCandidates ( al2 );
-                     if ( verbose>=3 )
-                          printfd ( "    cache %d: generated %d\n", ii, clc.size() );
 
-                     cltotal.insert ( cltotal.begin(), clc.begin(), clc.end() );
-                }
-                printfd ( " cache: generated %d\n", cltotal.size() );
-                */
-                printf ("done\n");
-                exit (0);
-        }
+		array_link al = exampleArray(36, verbose);
+		myassert(al.is_conference(2), "check on double conference design type");
 
-        if (0) {
-                array_link al = exampleArray (29, 0);
-                checkConferenceComposition (al, 1);
-                exit (0);
-        }
-        if (0) {
-                array_link al = exampleArray (28, 1);
-                al.showarray ();
-                lmc_t r = LMC0check (al, verbose);
-                printf ("result %d\n", r);
-                al = exampleArray (29, 1);
-                al.showarray ();
-                r = LMC0check (al, verbose);
-                printf ("result %d\n", r);
-                al = exampleArray (30, 1);
-                al.showarray ();
-                r = LMC0check (al, verbose);
-                printf ("result %d\n", r);
-                exit (0);
-        }
+		for (int i = 0; i < 100; i++) {
+			myprintf("iteration %d\n", i);
+			myassert(testLMC0checkDC(al, verbose >= 2), "testLMC0checkDC");
+		}
+		exit(0);
+
+		try {
+			array_link al = exampleArray(r);
+			al.show();
+			al.showarray();
+
+			std::vector<int> sizes = array2modelmatrix_sizes(al);
+			display_vector(sizes); myprintf("\n");
+			MatrixFloat modelmatrix = array2modelmatrix(al, "i", 1);
+			array_link modelmatrixx = modelmatrix;
+			modelmatrixx.show();
+			modelmatrixx.showarray();
+
+			modelmatrix = array2modelmatrix(al, "main", 1);
+			modelmatrixx = modelmatrix;
+			modelmatrixx.show();
+			modelmatrixx.showarray();
+
+			exit(0);
+
+		}
+		catch (const std::exception &e) {
+			std::cerr << e.what() << std::endl;
+			throw;
+		}
 
         {
-                speedcheck_conf (input, verbose);
-                exit (0);
-        }
-        if (0) {
-                int ei = 26;
+                array_link al = exampleArray (r);
 
-                array_link al = exampleArray (ei, 1);
-                arrayrankInfo (array2xf (al));
-                exit (0);
-
-                rankStructure rs;
-                rs.verbose = r;
-                int r = array2xf (al).rank ();
-                int rc = rs.rankxf (al);
-                printf ("rank of array %d: %d %d\n", ei, r, rc);
+                array_transformation_t tt = reduceOAnauty (al);
+                array_link alx = tt.apply (al);
                 exit (0);
         }
 
-        if (0) {
-                array_link al = exampleArray (22, 1);
-                al.showarray ();
-                symmdata sd (al);
-                sd.show ();
-                exit (0);
-        }
 
-        {
-                /// test performance if different rank algorithms
-
-                arraylist_t lst = readarrayfile (input);
-                rankStructure rs;
-                rs.verbose = r;
-                int r, rc;
-                printf ("test singular values\n");
-                for (int i = 0; i < (int)lst.size (); i++) {
-                        array_link al = lst[i];
-                        if (verbose >= 2)
-                                printf ("-\n");
-                        // arrayrankInfo(array2xf(al));
-                        // arrayrankInfo(array2secondorder(al));
-
-                        r = arrayrank (array2xf (al));
-                        // rc = arrayrank( array2secondorder( al ) ) + 1 + al.n_columns;
-                        // rc = array2secondorder ( al ).rank() + 1 + al.n_columns;
-                        rc = rs.rankxf (al);
-                        // printf ( "r %d, rc %d\n", r, rc );
-                        // myassert ( r==rc, "rank calculations" );
-                }
-                printfd ("done\n");
-
-                exit (0);
-        }
-        {
-                /// test performance if different rank algorithms
-
-                arraylist_t lst = readarrayfile (input);
-                rankStructure rs;
-                rs.verbose = r;
-                int r, rc;
-                printf ("test performance\n");
-                for (int i = 0; i < (int)lst.size (); i++) {
-                        array_link al = lst[i];
-                        if (verbose >= 2)
-                                printf ("-\n");
-
-                        switch (jj) {
-                        case 0:
-                                r = arrayrankColPivQR (array2xf (al));
-                                break;
-                        case 1:
-                                r = arrayrankFullPivQR (array2xf (al));
-                                break;
-                        case 2:
-                                r = arrayrankSVD (array2xf (al));
-                                break;
-                        case 3:
-                                r = arrayrankFullPivLU (array2xf (al));
-                                break;
-                        }
-                }
-                printfd ("done\n");
-
-                exit (0);
-        }
-        {
-                for (int i = 0; i < 27; i++) {
-                        array_link al = exampleArray (i, 0);
-                        if (al.n_columns < 5)
-                                continue;
-                        al = exampleArray (i, 1);
-
-                        rankStructure rs;
-                        rs.verbose = r;
-                        int r = array2xf (al).rank ();
-                        int rc = rs.rankxf (al);
-                        if (verbose >= 2) {
-                                printf ("rank of example array %d: %d %d\n", i, r, rc);
-                                if (verbose >= 3) {
-                                        al.showproperties ();
-                                }
-                        }
-                        myassert (r == rc, "rank calculations");
-                }
-                exit (0);
-        }
-
-        {
-
-        } {
-                pareto_cb_cache paretofunction = calculateArrayParetoJ5Cache< array_link >;
-
-                Pareto< mvalue_t< long >, array_link > pset;
-                std::vector< std::string > alist;
-                alist.push_back ("test.oa");
-                alist.push_back ("p567.oa");
-                alist.push_back ("p568.oa");
-
-                for (int i = 0; i < (int)alist.size (); i++) {
-                        std::string psourcefile = alist[i];
-
-                        // arrayfile_t afile ( psourcefile.c_str(), 0 );
-                        printf ("### source file %s\n", psourcefile.c_str ());
-
-                        arraylist_t arraylist = readarrayfile (psourcefile.c_str ());
-                        int apos = arrayInList (exampleArray (24), arraylist);
-                        printf ("  exampleArray 24: %d\n", apos);
-                        apos = arrayInList (exampleArray (26), arraylist);
-                        printf ("  exampleArray 26: %d\n", apos);
-
-                        for (size_t ij = 0; ij < arraylist.size (); ij++) {
-                                array_link alx = arraylist[ij];
-                                printf ("array %d: ", (int)ij);
-                                paretoInfo (alx);
-                        }
-                        fflush (stdout);
-
-                        // gfx::timsort(arraylist.begin(), arraylist.end());	// sorting the arrays makes the rank
-                        // calculations with subrank re-use more efficient
-                        if (verbose >= 2)
-                                printf ("oatest: read arrays in file %s: %d arrays \n", psourcefile.c_str (),
-                                        (int)arraylist.size ());
-                        addArraysToPareto (pset, paretofunction, arraylist, jj, verbose);
-                        printf ("  example 24: ");
-                        int t = arrayInPareto (pset, exampleArray (24), 1);
-                        printf ("  example 26: ");
-                        t = arrayInPareto (pset, exampleArray (26), 1);
-                        pset.show (2);
-                        exit (0);
-                }
-
-                printf ("### final result\n");
-                printf ("example 24: ");
-                int t = arrayInPareto (pset, exampleArray (24), 1);
-                printf ("example 26: ");
-                t = arrayInPareto (pset, exampleArray (26), 1);
-
-                exit (0);
-        }
-        printf ("----\n");
-
-        {
-
+<<<<<<< HEAD
                 arraylist_t ll = readarrayfile ("x.oa");
                 array_link al = ll[0];
 
@@ -755,6 +469,8 @@ int main (int argc, char *argv[]) {
                 }
                 exit (0);
         }
+=======
+>>>>>>> pieter/dev
 
         return 0;
 }
